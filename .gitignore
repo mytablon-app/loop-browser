@@ -11,10 +11,21 @@ user-data/
 # Failure screenshots can show logged-in/private pages (DMs, personal data).
 runs/
 
+# The DISH = cooked output (e.g. scraped member CSVs). Personal data — each user
+# cooks their OWN from their OWN session. Never shared. The recipe travels, not the meal.
+dishes/
+*-members.csv
+
+# Distributable binaries served by the landing site — big, built per-release.
+# Host via GitHub Release (preferred) or drop here locally; never commit.
+site/downloads/
+*.dmg
+*.exe
+
 # Your PRIVATE recipes (may hardcode company IDs / personal text).
-# Ship templates in flows/, keep personal ones in flows/local/ (folder kept, contents ignored).
-flows/local/*
-!flows/local/.gitkeep
+# Ship templates in recipes/, keep personal ones in recipes/local/ (folder kept, contents ignored).
+recipes/local/*
+!recipes/local/.gitkeep
 *.local.json
 
 # Secrets (e.g. a cloud LLM key for the chef, if ever used).
@@ -29,3 +40,6 @@ serve.mjs
 
 # --- OS junk ---
 .DS_Store
+
+# Local Claude Code runtime state (locks, etc.) — not source
+.claude/

@@ -10,12 +10,34 @@
   "scripts": {
     "prestart": "node scripts/rebrand-electron.mjs",
     "start": "electron .",
-    "cli": "node cli.mjs"
+    "cli": "node cli.mjs",
+    "install-skill": "node scripts/install-skill.mjs",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.mytablon.loopbrowser",
+    "productName": "Loop Browser",
+    "directories": { "output": "build/dist" },
+    "files": [
+      "main.js",
+      "ui/**/*",
+      "assets/**/*",
+      "package.json",
+      "!node_modules/playwright/**",
+      "!node_modules/playwright-core/**"
+    ],
+    "mac": {
+      "target": ["dmg"],
+      "icon": "assets/loop.icns",
+      "category": "public.app-category.productivity"
+    }
   },
   "dependencies": {
     "playwright": "^1.49.0"
   },
   "devDependencies": {
-    "electron": "^33.4.11"
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
   }
 }

@@ -1,0 +1,13 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Loop Browser">
+  <defs>
+    <linearGradient id="loopGrad" x1="16" y1="16" x2="112" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="#0b0f1a"/>
+  <rect x="8.5" y="8.5" width="111" height="111" rx="27.5" stroke="url(#loopGrad)" stroke-opacity="0.35"/>
+  <!-- continuous loop arrow -->
+  <path d="M40 64a24 24 0 1 1 7 17" stroke="url(#loopGrad)" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <path d="M40 44 L40 66 L60 66" stroke="url(#loopGrad)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

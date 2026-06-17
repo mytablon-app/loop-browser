@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Loop Browser — command the web from your CLI</title>
+<meta name="description" content="A glass desktop browser you command from the CLI. Reads the page, finds elements, acts. Frequent tasks become recipes that replay deterministically — no LLM in the hot path. Local-first, private." />
+<link rel="icon" href="loop-icon.svg" type="image/svg+xml" />
+<!-- Social share (Open Graph + Twitter). Set og:url + the og.png to the deployed URL at launch. -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Loop Browser — command the web from your CLI" />
+<meta property="og:description" content="Your kitchen for the web: a head chef turns simple recipes (commands) into amazing dishes (automations). Local-first, deterministic, ~$0 to re-run." />
+<meta property="og:image" content="og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Loop Browser — command the web from your CLI" />
+<meta name="twitter:description" content="Your kitchen for the web. Cook any task as a dish, served forever by deterministic line cooks." />
+<meta name="twitter:image" content="og.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#070b14; --ink2:#0b1120;
+  --panel:rgba(255,255,255,.045); --panel-2:rgba(255,255,255,.07);
+  --border:rgba(255,255,255,.10); --border-strong:rgba(255,255,255,.18);
+  --text:#e9eef7; --muted:#93a2ba; --faint:#5d6c84;
+  --indigo:#6366f1; --cyan:#22d3ee;
+  --grad:linear-gradient(120deg,#818cf8,#22d3ee);
+  --grad-deep:linear-gradient(120deg,#6366f1,#22d3ee);
+  --glow:rgba(99,102,241,.30); --glow2:rgba(34,211,238,.22);
+  --shadow:0 30px 80px -30px rgba(0,0,0,.7);
+  --r:18px; --maxw:1120px;
+  --display:"Bricolage Grotesque",serif; --body:"Hanken Grotesk",sans-serif; --mono:"JetBrains Mono",monospace;
+}
+html[data-theme="light"]{
+  --ink:#eef2f8; --ink2:#e4eaf3;
+  --panel:rgba(255,255,255,.72); --panel-2:rgba(255,255,255,.9);
+  --border:rgba(15,23,42,.09); --border-strong:rgba(15,23,42,.16);
+  --text:#0e1a2c; --muted:#44516a; --faint:#5b6880;
+  --glow:rgba(99,102,241,.20); --glow2:rgba(34,211,238,.16);
+  --shadow:0 30px 70px -34px rgba(30,50,90,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--body); background:var(--ink); color:var(--text);
+  line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  transition:background .5s ease,color .5s ease;
+}
+/* atmosphere */
+.bg{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
+.bg::before{content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(900px 600px at 78% -8%,var(--glow),transparent 60%),
+    radial-gradient(800px 600px at 8% 12%,var(--glow2),transparent 55%),
+    linear-gradient(180deg,var(--ink),var(--ink2));
+  transition:background .5s ease;}
+.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  background:color-mix(in srgb,var(--ink) 62%,transparent);border-bottom:1px solid var(--border);}
+.nav-in{max-width:var(--maxw);margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:20px}
+.brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;text-decoration:none;color:var(--text)}
+.brand img{width:34px;height:34px;border-radius:9px}
+.brand b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.nav-links{margin-left:auto;display:flex;align-items:center;gap:2px}
+.nav-links a.lnk{position:relative;color:var(--muted);text-decoration:none;font-size:.9rem;font-weight:500;letter-spacing:-.005em;padding:6px 2px;margin:0 14px;transition:color .2s}
+.nav-links a.lnk::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;border-radius:2px;background:var(--grad);transform:scaleX(0);transform-origin:left;transition:transform .26s cubic-bezier(.2,.7,.2,1)}
+.nav-links a.lnk:hover{color:var(--text)}
+.nav-links a.lnk:hover::after{transform:scaleX(1)}
+.nav-div{width:1px;height:22px;background:var(--border);margin:0 14px 0 8px}
+.icon-btn{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;border:1px solid var(--border);
+  background:var(--panel);color:var(--text);cursor:pointer;transition:.2s}
+.icon-btn:hover{border-color:var(--border-strong);transform:translateY(-1px)}
+.btn-sm{font-family:var(--body);font-weight:600;font-size:.9rem;padding:9px 16px;border-radius:11px;text-decoration:none;
+  color:#fff;background:var(--grad-deep);box-shadow:0 8px 24px -8px var(--glow);transition:.2s}
+.btn-sm:hover{transform:translateY(-1px);box-shadow:0 12px 30px -8px var(--glow)}
+@media(max-width:680px){.nav-links .hide{display:none}}
+
+/* hero */
+header{position:relative;padding:96px 0 40px;text-align:center}
+.orbit{position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:760px;max-width:120vw;aspect-ratio:1;z-index:-1;opacity:.55}
+.orbit i{position:absolute;inset:0;margin:auto;border:1px solid var(--border);border-radius:50%}
+.orbit i:nth-child(1){width:300px;height:300px}
+.orbit i:nth-child(2){width:480px;height:480px;border-style:dashed;animation:spin 60s linear infinite}
+.orbit i:nth-child(3){width:680px;height:680px}
+.orbit .dot{position:absolute;top:50%;left:50%;width:480px;height:480px;margin:-240px 0 0 -240px;animation:spin 24s linear infinite}
+.orbit .dot::after{content:"";position:absolute;top:-5px;left:50%;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--cyan);box-shadow:0 0 18px 3px var(--glow2)}
+.orbit .dot2{animation-duration:38s;animation-direction:reverse;width:680px;height:680px;margin:-340px 0 0 -340px}
+.orbit .dot2::after{background:var(--indigo);box-shadow:0 0 18px 3px var(--glow)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.orbit i,.orbit .dot{animation:none}}
+
+.hero-logo{width:96px;height:96px;border-radius:24px;box-shadow:var(--shadow);}
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:var(--muted);
+  border:1px solid var(--border);background:var(--panel);padding:6px 14px;border-radius:999px;margin-bottom:26px}
+.pill .ok{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+h1{font-family:var(--display);font-weight:800;letter-spacing:-.035em;line-height:1.02;
+  font-size:clamp(2.7rem,7vw,5rem);margin:22px 0 18px}
+h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{font-size:clamp(1.05rem,2vw,1.3rem);color:var(--muted);max-width:620px;margin:0 auto 34px}
+.cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn{font-family:var(--body);font-weight:700;font-size:1.02rem;text-decoration:none;padding:15px 30px;border-radius:14px;transition:.22s;display:inline-flex;align-items:center;gap:10px}
+.btn-primary{color:#fff;background:var(--grad-deep);box-shadow:0 16px 40px -12px var(--glow),0 0 0 1px rgba(255,255,255,.06) inset}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 22px 50px -12px var(--glow)}
+.btn-ghost{color:var(--text);background:var(--panel);border:1px solid var(--border-strong)}
+.btn-ghost:hover{transform:translateY(-2px);background:var(--panel-2)}
+.meta{margin-top:22px;font-size:.85rem;color:var(--faint);font-family:var(--mono)}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(18px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:6px}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;animation:none}}
+@keyframes rise{to{opacity:1;transform:none}}
+.d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}.d4{animation-delay:.35s}.d5{animation-delay:.45s}.d6{animation-delay:.55s}
+
+/* sections */
+section{padding:64px 0}
+.eyebrow{font-family:var(--mono);font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
+h2{font-family:var(--display);font-weight:700;letter-spacing:-.03em;font-size:clamp(1.8rem,4vw,2.7rem);line-height:1.08;margin-bottom:14px}
+.sub{color:var(--muted);max-width:620px;font-size:1.05rem}
+.center{text-align:center}.center .sub,.sub.center{margin-left:auto;margin-right:auto}
+
+/* story */
+.story-intro{margin-bottom:64px}
+.story{position:relative;max-width:720px;margin:0 auto}
+.story::before{content:"";position:absolute;left:7px;top:10px;bottom:90px;width:2px;
+  background:linear-gradient(180deg,var(--indigo),var(--cyan),transparent);opacity:.45;border-radius:2px}
+.chapter{position:relative;padding:0 0 58px 46px}
+.chapter::before{content:"";position:absolute;left:0;top:5px;width:16px;height:16px;border-radius:50%;
+  background:var(--ink);border:2px solid var(--cyan);box-shadow:0 0 16px var(--glow2);transition:.4s}
+.chapter .num{font-family:var(--mono);font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
+.chapter .tale{font-family:var(--display);font-weight:500;font-size:clamp(1.4rem,3.2vw,2.1rem);line-height:1.28;letter-spacing:-.02em;margin-bottom:18px}
+.chapter .tale b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700}
+.chapter .cap{float:left;font-family:var(--display);font-weight:800;font-size:3.4em;line-height:.74;padding:6px 12px 0 0;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.chapter .mean{color:var(--muted);font-size:1rem;border-left:2px solid var(--border-strong);padding-left:16px;max-width:520px}
+.chapter .mean b{color:var(--text);font-weight:600}
+/* scroll reveal — only when JS adds .anim, so no-JS shows everything */
+body.anim .chapter{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+body.anim .chapter.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){body.anim .chapter{opacity:1;transform:none}}
+
+/* menu */
+.menu{max-width:760px;margin:42px auto 0;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);
+  padding:10px 30px;backdrop-filter:blur(10px)}
+.dish{padding:24px 0}
+.dish+.dish{border-top:1px dashed var(--border)}
+.dish-top{display:flex;align-items:baseline;gap:10px}
+.dish-name{font-family:var(--display);font-weight:700;font-size:1.22rem;letter-spacing:-.01em;white-space:nowrap}
+.dish-lead{flex:1;border-bottom:1px dotted var(--faint);min-width:24px;transform:translateY(-5px);opacity:.6}
+.dish-garnish{font-family:var(--mono);font-size:.78rem;color:var(--cyan);white-space:nowrap}
+.dish p{color:var(--muted);font-size:.97rem;margin-top:7px;max-width:560px}
+.menu-note{margin-top:30px;color:var(--muted);font-size:.95rem}
+code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--border);
+  padding:1px 7px;border-radius:6px;color:var(--cyan)}
+
+/* get-started steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:42px;text-align:left}
+@media(max-width:860px){.steps{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.steps{grid-template-columns:1fr}}
+.step{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:24px;transition:.25s;backdrop-filter:blur(10px)}
+.step:hover{transform:translateY(-4px);border-color:var(--border-strong);background:var(--panel-2)}
+.step .n{font-family:var(--display);font-weight:800;font-size:1.7rem;line-height:1;margin-bottom:12px;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.step h3{font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;margin-bottom:7px}
+.step p{color:var(--muted);font-size:.93rem}
+.step a{display:inline-block;margin-top:12px;color:var(--cyan);text-decoration:none;font-weight:600;font-size:.9rem}
+.step a:hover{text-decoration:underline}
+
+/* downloads counter pill */
+.dl-count{display:inline-flex;align-items:center;gap:9px;margin-top:18px;padding:9px 18px;border-radius:999px;
+  border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:.85rem;font-family:var(--mono);backdrop-filter:blur(8px)}
+.dl-count b{color:var(--text);font-weight:700}
+.dl-count .pulse{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+
+/* terminal */
+.term{max-width:760px;margin:0 auto;border-radius:16px;border:1px solid var(--border-strong);background:color-mix(in srgb,#05080f 78%,transparent);
+  box-shadow:var(--shadow);overflow:hidden;backdrop-filter:blur(8px)}
+html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 90%,transparent)}
+.term-bar{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
+.term-bar i{width:12px;height:12px;border-radius:50%}
+.term-bar i:nth-child(1){background:#ff5f57}.term-bar i:nth-child(2){background:#febc2e}.term-bar i:nth-child(3){background:#28c840}
+.term-bar span{margin-left:10px;font-family:var(--mono);font-size:.78rem;color:#7c8aa3}
+.term pre{font-family:var(--mono);font-size:.9rem;line-height:1.9;color:#cdd7ea;padding:22px 22px 26px;overflow-x:auto;margin:0}
+.term .p{color:#22d3ee}.term .c{color:#818cf8}.term .a{color:#9fb0c9}.term .o{color:#5d6c84}.term .ok{color:#28c840}
+
+/* cards */
+.grid{display:grid;gap:18px;margin-top:38px}
+.g4{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.g4,.g2{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:26px;transition:.25s;backdrop-filter:blur(10px)}
+.card:hover{transform:translateY(-4px);border-color:var(--border-strong);background:var(--panel-2)}
+.card .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;margin-bottom:16px;
+  background:var(--grad-deep);box-shadow:0 10px 26px -10px var(--glow)}
+.card h3{font-family:var(--display);font-weight:700;font-size:1.15rem;letter-spacing:-.01em;margin-bottom:7px}
+.card p{color:var(--muted);font-size:.95rem}
+.card .tag{font-family:var(--mono);font-size:.72rem;color:var(--cyan);display:block;margin-bottom:6px;letter-spacing:.04em}
+
+/* stats / why */
+.why{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:38px}
+@media(max-width:620px){.why{grid-template-columns:1fr}}
+.why .card{display:flex;gap:18px;align-items:flex-start}
+.why .num{font-family:var(--display);font-weight:800;font-size:2rem;line-height:1;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;min-width:78px}
+
+/* split panel (privacy) */
+.split{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+@media(max-width:820px){.split{grid-template-columns:1fr;gap:28px}}
+.ledger{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:10px;backdrop-filter:blur(10px)}
+.ledger .row{display:flex;align-items:center;gap:14px;padding:15px 16px;border-radius:12px}
+.ledger .row+.row{border-top:1px solid var(--border)}
+.ledger .k{font-family:var(--mono);font-size:.92rem;flex:1}
+.ledger .ships{color:#28c840;font-weight:600;font-size:.85rem;font-family:var(--mono)}
+.ledger .stays{color:var(--cyan);font-weight:600;font-size:.85rem;font-family:var(--mono)}
+.ledger .ic{font-size:1.1rem}
+
+/* download */
+.download{text-align:center;border:1px solid var(--border-strong);border-radius:28px;padding:64px 28px;
+  background:radial-gradient(700px 300px at 50% 0%,var(--glow),transparent 70%),var(--panel);backdrop-filter:blur(12px);position:relative;overflow:hidden}
+.download h2{font-size:clamp(2rem,5vw,3rem)}
+.dl-meta{margin-top:18px;color:var(--faint);font-size:.85rem;font-family:var(--mono)}
+.note{margin-top:10px;font-size:.82rem;color:var(--muted);max-width:460px;margin-left:auto;margin-right:auto}
+.note a{color:var(--cyan);text-decoration:none;font-weight:600}
+.note a:hover{text-decoration:underline}
+
+footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
+.foot{display:flex;align-items:center;gap:16px;flex-wrap:wrap;color:var(--faint);font-size:.88rem}
+.foot .brand{font-size:1rem}
+.foot .sep{margin-left:auto;font-family:var(--mono);color:var(--muted)}
+.foot a{color:var(--muted);text-decoration:none}.foot a:hover{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="grain"></div>
+
+<nav>
+  <div class="nav-in">
+    <a href="#" class="brand" aria-label="Loop Browser"><img src="loop-icon.svg" alt="" />Loop <b>Browser</b></a>
+    <div class="nav-links">
+      <a href="#kitchen" class="lnk hide">Story</a>
+      <a href="#menu" class="lnk hide">Menu</a>
+      <a href="#privacy" class="lnk hide">Privacy</a>
+      <a href="#start" class="lnk hide">Get started</a>
+      <span class="nav-div hide"></span>
+      <button class="icon-btn" id="theme" aria-label="Toggle theme">🌙</button>
+      <a href="#download" class="btn-sm">Download</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="orbit"><i></i><i></i><i></i><div class="dot"></div><div class="dot dot2"></div></div>
+  <div class="wrap">
+    <img src="loop-icon.svg" class="hero-logo rv d1" alt="Loop Browser" />
+    <div class="rv d2" style="margin-top:26px"><span class="pill"><span class="ok"></span>Local-first · Cross-platform · MIT</span></div>
+    <h1 class="rv d3">Command the web<br>from your <span class="g">CLI</span>.</h1>
+    <p class="lede rv d4"><strong>Loop Browser</strong> is your kitchen. It just needs a head chef (CLI) — to turn your simple <strong>recipes</strong> (commands) into amazing <strong>dishes</strong> (automations).</p>
+    <div class="cta rv d5">
+      <a href="#download" class="btn btn-primary">↓ Download Loop</a>
+    </div>
+    <div class="meta rv d6">drive the active tab · watch every step · your logins never leave your machine</div>
+    <div class="rv d6"><span class="dl-count" id="dl-count" style="display:none"><span class="pulse"></span><b id="dl-count-n">—</b>&nbsp;downloads</span></div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="term rv d2">
+      <div class="term-bar"><i></i><i></i><i></i><span>loop — zsh</span></div>
+<pre><span class="o"># teach it once, then replay like a bot — no LLM, ~$0 per run</span>
+<span class="p">$</span> <span class="c">loop</span> <span class="a">run post-to-linkedin</span> text=<span class="a">"We just shipped 🚀"</span>
+  · open linkedin.com/feed · compose · click "Post"  → <span class="ok">✓ posted</span>
+
+<span class="p">$</span> <span class="c">loop</span> <span class="a">run pull-report</span>
+  · open the dashboard · extract "table tr" → <span class="ok">42 rows</span> → dishes/report.csv</pre>
+    </div>
+  </div>
+</section>
+
+<section id="kitchen">
+  <div class="wrap">
+    <div class="story-intro center">
+      <div class="eyebrow">The story</div>
+      <h2>How Tom became successful</h2>
+      <p class="sub center">A little tale about an entrepreneur, his recipes, and the cooks who never sleep.</p>
+    </div>
+    <div class="story">
+      <div class="chapter">
+        <div class="num">Chapter one · The dream</div>
+        <p class="tale"><span class="cap">O</span>nce, an entrepreneur named <b>Tom</b> dreamed of opening a restaurant — and serving dishes the world had never tasted.</p>
+        <p class="mean"><b>You</b> — with a business to grow, and work only you know how to do.</p>
+      </div>
+      <div class="chapter">
+        <div class="num">Chapter two · The kitchen</div>
+        <p class="tale">So he built a <b>kitchen</b> and brought in a <b>head chef</b> who could cook anything he was asked.</p>
+        <p class="mean">The kitchen is <b>Loop Browser</b>; the head chef is the <b>CLI</b> you command — with an LLM (Claude Code) for a brain.</p>
+      </div>
+      <div class="chapter">
+        <div class="num">Chapter three · The recipes</div>
+        <p class="tale">Tom wrote down his <b>secret recipes</b> — and kept his <b>ingredients</b> in the pantry, adding them fresh each cook.</p>
+        <p class="mean">Recipes are your saved <b>commands</b>; ingredients are your <b>data</b> — and both stay yours.</p>
+      </div>
+      <div class="chapter">
+        <div class="num">Chapter four · The cooking</div>
+        <p class="tale">Once the head chef perfected a dish, the kitchen plated it <b>flawlessly</b> — again and again — while Tom watched every plate leave the pass.</p>
+        <p class="mean">Automation you can <b>watch</b> — deterministic, repeatable, no guesswork.</p>
+      </div>
+      <div class="chapter">
+        <div class="num">Chapter five · The success</div>
+        <p class="tale">Word spread. The restaurant thrived. Today <b>a hundred line cooks</b> work the kitchen — and Tom simply runs the place.</p>
+        <p class="mean">Cheap <b>bots</b> replay your recipes at scale. You own the menu; the kitchen does the work.</p>
+      </div>
+    </div>
+    <div class="center" style="margin-top:10px">
+      <a href="#download" class="btn btn-primary">Open your kitchen ↓</a>
+    </div>
+  </div>
+</section>
+
+<section id="menu">
+  <div class="wrap center">
+    <div class="eyebrow">On the menu</div>
+    <h2>A dish is an automation, plated.</h2>
+    <p class="sub center">If you can do it in a browser, it can be automated.</p>
+  </div>
+  <div class="wrap">
+    <div class="menu">
+      <div class="dish">
+        <div class="dish-top"><span class="dish-name">Post to LinkedIn</span><span class="dish-lead"></span><span class="dish-garnish">scheduled</span></div>
+        <p>Draft, schedule, and publish posts — your presence keeps running while you don't.</p>
+      </div>
+      <div class="dish">
+        <div class="dish-top"><span class="dish-name">Run your WhatsApp</span><span class="dish-lead"></span><span class="dish-garnish">hands-off</span></div>
+        <p>Send messages, pull a group's contacts, follow up on replies — without lifting a finger.</p>
+      </div>
+      <div class="dish">
+        <div class="dish-top"><span class="dish-name">Fill any form</span><span class="dish-lead"></span><span class="dish-garnish">deterministic</span></div>
+        <p>Applications, leads, weekly reports — submitted flawlessly, every single time.</p>
+      </div>
+      <div class="dish">
+        <div class="dish-top"><span class="dish-name">Pull any report</span><span class="dish-lead"></span><span class="dish-garnish">your login, local</span></div>
+        <p>Lift a table from a dashboard or any site into a spreadsheet, on a schedule.</p>
+      </div>
+    </div>
+    <p class="menu-note center">Don't see your dish? Hand the chef a recipe with <code>loop author</code>.</p>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="wrap split">
+    <div>
+      <div class="eyebrow">Local-first by design</div>
+      <h2>Your data never leaves your machine.</h2>
+      <p class="sub" style="margin-bottom:22px">The recipe travels; the meal, the pantry, and the key stay home.</p>
+      <p class="sub">Only you log in — the cook and chef work <em>inside</em> your session, but never see your credentials.</p>
+    </div>
+    <div class="ledger">
+      <div class="row"><span class="ic">📋</span><span class="k">Recipe (the method)</span><span class="ships">SHIPS →</span></div>
+      <div class="row"><span class="ic">🧂</span><span class="k">Ingredients (your data)</span><span class="stays">STAYS</span></div>
+      <div class="row"><span class="ic">🍽️</span><span class="k">Dish (the output)</span><span class="stays">STAYS</span></div>
+      <div class="row"><span class="ic">🔑</span><span class="k">Key (your login)</span><span class="stays">STAYS</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap center">
+    <div class="eyebrow">Why the dishes are better</div>
+    <h2>Quick to cook, delicious to serve.</h2>
+    <div class="why" style="text-align:left">
+      <div class="card"><div class="num">12×</div><div><h3>Reads code, not pixels</h3><p>Acts on the accessibility tree — ~12× cheaper than vision, far more reliable.</p></div></div>
+      <div class="card"><div class="num">$0</div><div><h3>Deterministic replay</h3><p>No LLM in the loop. Known tasks cost nothing to repeat.</p></div></div>
+      <div class="card"><div class="num">🛡️</div><div><h3>Injection-resistant</h3><p>Replay never feeds page text to an LLM — immune to prompt-injection.</p></div></div>
+      <div class="card"><div class="num">🔑</div><div><h3>You hold the keys</h3><p>Runs in a window you watch. Only you log in — no cloud acting as you.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap center">
+    <div class="eyebrow">Get started</div>
+    <h2>Your first dish, in six steps.</h2>
+    <p class="sub">What each piece is, and where to get it.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Download Loop</h3><p>The kitchen — the glass browser you'll command. Grab the build for your computer.</p><a href="#download">Get the app →</a></div>
+      <div class="step"><div class="n">2</div><h3>Get Claude Code</h3><p>The chef's brain — the LLM that writes &amp; heals recipes, on your own subscription.</p><a href="https://claude.com/claude-code" target="_blank" rel="noopener">claude.com/claude-code →</a></div>
+      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>The command line you cook from — <code>loop run</code>, <code>loop author</code>. Ships with the app.</p></div>
+      <div class="step"><div class="n">4</div><h3>Install Node.js</h3><p>Runs the CLI under the hood. Version 18 or newer — a one-time install.</p><a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org →</a></div>
+      <div class="step"><div class="n">5</div><h3>Connect</h3><p>Launch Loop — it opens and listens on a local port. Every <code>loop</code> command (yours or Claude's) connects to it instantly. No config, no cloud.</p></div>
+      <div class="step"><div class="n">6</div><h3>Cook</h3><p>Run a dish — <code>loop run hn-top</code> — or have the chef write one with <code>loop author</code>. Watch every step.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <div class="download">
+      <div class="eyebrow" style="color:var(--cyan)">Ready when you are</div>
+      <h2>Download your loop</h2>
+      <p class="sub center" style="margin-top:6px">Command the web — and cook your first dish.</p>
+      <div class="cta" style="margin-top:30px">
+        <a id="dl-primary" href="#" class="btn btn-primary">↓ Download Loop</a>
+      </div>
+      <div id="dl-meta" class="dl-meta">Mac &amp; Windows · desktop app</div>
+      <p id="dl-other" class="note" style="margin-top:14px"></p>
+      <p id="dl-note" class="note">First launch: the build is unsigned — allow it once, then the CLI drives it over a local port.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <a href="#" class="brand"><img src="loop-icon.svg" alt="" style="width:24px;height:24px;border-radius:6px" />Loop <b style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">Browser</b></a>
+    <span>MIT licensed</span>
+    <span class="sep">Command from CLI · Watch it happen</span>
+  </div>
+</footer>
+
+<script>
+  const root=document.documentElement, btn=document.getElementById('theme');
+  const saved=localStorage.getItem('loop-theme');
+  if(saved){root.setAttribute('data-theme',saved);}
+  const sync=()=>{ const light=root.getAttribute('data-theme')==='light'; btn.textContent=light?'☀️':'🌙'; btn.setAttribute('aria-label', light?'Switch to dark mode':'Switch to light mode'); btn.setAttribute('aria-pressed', String(light)); };
+  sync();
+  btn.addEventListener('click',()=>{
+    const next=root.getAttribute('data-theme')==='light'?'dark':'light';
+    root.setAttribute('data-theme',next);localStorage.setItem('loop-theme',next);sync();
+  });
+
+  // Scroll-reveal the story chapters (no-JS keeps them visible)
+  document.body.classList.add('anim');
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  },{threshold:.3,rootMargin:'0px 0px -8% 0px'});
+  document.querySelectorAll('.chapter').forEach(c=>io.observe(c));
+
+  // OS-aware download: show the visitor's platform; offer the other as a fallback.
+  // TODO @deploy: point these at the hosted files (site/downloads/… or GitHub Release URLs).
+  const FILES={mac:'downloads/Loop-Browser-arm64.dmg', win:'downloads/Loop-Browser-Setup.exe'};
+  const ua=navigator.userAgent;
+  // Mobile FIRST — iPadOS reports a Mac UA, so iPhone/iPad would otherwise be served a .dmg.
+  const isMobile=/iPhone|iPad|iPod|Android/i.test(ua);
+  const os = isMobile ? 'mobile'
+    : (/Windows|Win32|Win64/i.test(ua) ? 'win'
+    : (/Mac/i.test(ua) ? 'mac' : 'other'));
+  const $p=document.getElementById('dl-primary'), $m=document.getElementById('dl-meta'),
+        $o=document.getElementById('dl-other'), $n=document.getElementById('dl-note');
+  if(os==='win'){
+    $p.textContent='↓ Download for Windows'; $p.href=FILES.win;
+    $m.textContent='Windows 10/11 · 64-bit · .exe';
+    $o.innerHTML='On a Mac? <a href="'+FILES.mac+'">Get the macOS version →</a>';
+    $n.innerHTML='Unsigned build — on the SmartScreen prompt, click <strong>More info → Run anyway</strong>.';
+  } else if(os==='mac'){
+    $p.textContent='↓ Download for macOS'; $p.href=FILES.mac;
+    $m.textContent='macOS · Apple Silicon · .dmg';
+    $o.innerHTML='On Windows? <a href="'+FILES.win+'">Get the Windows version →</a>';
+    $n.innerHTML='Unsigned build — right-click the app → <strong>Open</strong> on first launch.';
+  } else if(os==='mobile'){
+    $p.textContent='↓ Download'; $p.href='#'; $p.setAttribute('aria-disabled','true');
+    $m.textContent='Desktop app · Mac & Windows';
+    $o.innerHTML='Loop is a desktop app — open this page on your <strong>Mac</strong> or <strong>Windows PC</strong> to download.';
+    $n.textContent='';
+  } else {
+    $p.textContent='↓ Download'; $p.href='#';
+    $m.textContent='Mac &amp; Windows';
+    $o.innerHTML='Pick your platform: <a href="'+FILES.mac+'">macOS (.dmg)</a> · <a href="'+FILES.win+'">Windows (.exe)</a>';
+  }
+
+  // Download counter — REAL persisted stats via /api/downloads (Vercel + KV).
+  // Each click on a Mac/Win download = +1. Locally/pre-deploy the API is absent → pill shows "—".
+  const CN=document.getElementById('dl-count-n');
+  const fmt=n=>Number(n).toLocaleString();
+  (async()=>{ try{ const r=await fetch('/api/downloads'); if(r.ok){ const d=await r.json(); if(d&&d.count!=null){ CN.textContent=fmt(d.count); document.getElementById('dl-count').style.display='inline-flex'; } } }catch(_){} })();
+  async function bumpDownload(){ try{ const r=await fetch('/api/downloads',{method:'POST'}); if(r.ok){ const d=await r.json(); if(d&&d.count!=null) CN.textContent=fmt(d.count); } }catch(_){} }
+  $p.addEventListener('click',bumpDownload);
+  $o.addEventListener('click',e=>{ if(e.target.closest('a')) bumpDownload(); });
+</script>
+</body>
+</html>

@@ -123,16 +123,31 @@ function closeTab(id) {
 }
 
 function createWindow() {
+  const { width: screenW, height: screenH } = require("electron").screen.getPrimaryDisplay().workAreaSize;
+  // Glass is OS-specific. macOS = vibrancy + inset traffic-lights + transparent bg.
+  // Windows = acrylic material + a hidden titlebar with a window-controls overlay.
+  // Guard the mac-only options so the SAME codebase builds & renders safely on both.
+  // (Windows path written here but untested on Windows — verify on a Win build/CI.)
+  const isMac = process.platform === "darwin";
   win = new BrowserWindow({
-    width: 1280,
-    height: 840,
+    width: screenW,
+    height: screenH,
     title: "Loop Browser",
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 18, y: 20 },
-    vibrancy: "under-window",
-    visualEffectState: "active",
-    backgroundColor: "#00000000",
     icon: ICON,
+    ...(isMac
+      ? {
+          titleBarStyle: "hiddenInset",
+          trafficLightPosition: { x: 18, y: 20 },
+          vibrancy: "under-window",
+          visualEffectState: "active",
+          backgroundColor: "#00000000",
+        }
+      : {
+          titleBarStyle: "hidden",
+          titleBarOverlay: { color: "#0b1120", symbolColor: "#e9eef7", height: 36 },
+          backgroundMaterial: "acrylic", // Win 11 glass; falls back to solid on older Windows
+          backgroundColor: "#0b1120",
+        }),
   });
   win.webContents.loadURL("about:blank"); // root CDP target init (prevents connectOverCDP hang)
 
@@ -147,6 +162,7 @@ function createWindow() {
     newTab();
   });
 
+  win.maximize();
   layout();
   win.on("resize", layout);
 }
