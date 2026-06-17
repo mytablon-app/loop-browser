@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root{
+    --ink:#eaf0ff; --muted:rgba(234,240,255,.5);
+    --a:#7c83ff; --b:#34d8ef;
+    --glass:rgba(18,22,38,.55);
+    --pill:rgba(255,255,255,.06); --pill-line:rgba(255,255,255,.12);
+    --soft:rgba(255,255,255,.06); --soft-2:rgba(255,255,255,.10);
+    --hover:rgba(255,255,255,.08);
+  }
+  html[data-theme="light"]{
+    --ink:#16203a; --muted:rgba(22,32,58,.5);
+    --glass:rgba(244,246,252,.62);
+    --pill:rgba(22,32,58,.05); --pill-line:rgba(22,32,58,.14);
+    --soft:rgba(22,32,58,.05); --soft-2:rgba(22,32,58,.10);
+    --hover:rgba(22,32,58,.07);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:transparent;overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--ink);}
+  .wrap{position:relative;height:100%;background:var(--glass);
+    backdrop-filter:blur(22px) saturate(160%); -webkit-backdrop-filter:blur(22px) saturate(160%);
+    -webkit-app-region:drag; transition:background .4s ease;}
+
+  .tabs{height:36px;display:flex;align-items:flex-end;gap:6px;padding:6px 10px 0 86px;}
+  .tab{-webkit-app-region:no-drag;display:flex;align-items:center;gap:8px;max-width:200px;height:28px;
+    padding:0 6px 0 12px;border-radius:9px 9px 0 0;background:var(--soft);color:var(--muted);
+    font-size:12px;cursor:default;transition:background .15s,color .15s;}
+  .tab:hover{background:var(--soft-2);color:var(--ink);}
+  .tab.active{background:var(--soft-2);color:var(--ink);}
+  .tab .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+  .tab .x{border:0;background:transparent;color:inherit;cursor:pointer;font-size:15px;line-height:1;
+    width:18px;height:18px;border-radius:5px;opacity:.55;}
+  .tab .x:hover{opacity:1;background:var(--hover);}
+  .plus{-webkit-app-region:no-drag;width:26px;height:26px;border:0;border-radius:8px;background:transparent;
+    color:var(--ink);cursor:pointer;font-size:18px;line-height:1;opacity:.7;transition:background .15s,opacity .15s;}
+  .plus:hover{background:var(--hover);opacity:1;}
+
+  .bar{height:52px;display:flex;align-items:center;gap:8px;padding:0 14px;}
+  .btn,.addr,.home,.tab,.plus{-webkit-app-region:no-drag;}
+  .btn{width:32px;height:32px;border:0;border-radius:9px;background:transparent;color:var(--ink);
+    display:grid;place-items:center;cursor:pointer;opacity:.85;transition:background .15s,opacity .15s;}
+  .btn:hover{background:var(--hover);opacity:1;} .btn:disabled{opacity:.25;cursor:default;}
+  .btn svg{width:18px;height:18px;}
+  .home{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;cursor:pointer;
+    background:linear-gradient(135deg,var(--a),var(--b));margin-right:4px;}
+  .home svg{width:18px;height:18px;}
+  .addr{flex:1;height:36px;border-radius:11px;border:1px solid var(--pill-line);background:var(--pill);
+    color:var(--ink);font-size:13.5px;font-family:inherit;padding:0 16px;outline:none;
+    transition:border-color .2s,box-shadow .2s,background .2s;}
+  .addr::placeholder{color:var(--muted);}
+  .addr:focus{border-color:var(--a);background:var(--soft-2);
+    box-shadow:0 0 0 3px color-mix(in oklab,var(--a) 26%,transparent);}
+  .theme .moon{display:none;} html[data-theme="light"] .theme .sun{display:none;}
+  html[data-theme="light"] .theme .moon{display:block;}
+
+  /* loading progress bar — thin gradient line at the toolbar's bottom edge */
+  .prog{position:absolute;left:0;bottom:0;height:2.5px;width:0;border-radius:0 3px 3px 0;
+    background:linear-gradient(90deg,var(--a),var(--b));box-shadow:0 0 8px var(--b);
+    opacity:0;transition:width .2s ease,opacity .35s;}
+  .prog.show{opacity:1;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="tabs"><div id="tabs" style="display:flex;gap:6px;align-items:flex-end"></div>
+      <button class="plus" id="plus" title="New tab">+</button>
+    </div>
+    <div class="bar">
+      <button class="btn" id="back" title="Back" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="btn" id="fwd" title="Forward" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      <button class="btn" id="reload" title="Reload">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg></button>
+      <button class="home" id="home" title="Loop home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12a5 5 0 1 1 1.5 3.5"/><path d="M7 8.5V12h3.5"/></svg></button>
+      <input class="addr" id="addr" placeholder="Search the web, or enter a URL" spellcheck="false" />
+      <button class="btn theme" id="theme" title="Light / dark">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+    <div class="prog" id="prog"></div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const addr = $("addr");
+  $("back").onclick = () => window.loop.back();
+  $("fwd").onclick = () => window.loop.forward();
+  $("reload").onclick = () => window.loop.reload();
+  $("home").onclick = () => window.loop.home();
+  $("plus").onclick = () => window.loop.tabNew();
+  $("theme").onclick = () => window.loop.themeToggle();
+  addr.addEventListener("keydown", (e) => { if (e.key === "Enter") { window.loop.go(addr.value); addr.blur(); } });
+
+  window.loop.onState((s) => {
+    if (document.activeElement !== addr) addr.value = s.url || "";
+    $("back").disabled = !s.canBack; $("fwd").disabled = !s.canFwd;
+  });
+  window.loop.onTheme((t) => document.documentElement.setAttribute("data-theme", t));
+  window.loop.onTabs((tabs) => {
+    const box = $("tabs"); box.innerHTML = "";
+    for (const t of tabs) {
+      const chip = document.createElement("div");
+      chip.className = "tab" + (t.active ? " active" : "");
+      chip.onclick = () => window.loop.tabActivate(t.id);
+      const title = document.createElement("span"); title.className = "t"; title.textContent = t.title;
+      const x = document.createElement("button"); x.className = "x"; x.textContent = "×";
+      x.onclick = (e) => { e.stopPropagation(); window.loop.tabClose(t.id); };
+      chip.append(title, x); box.append(chip);
+    }
+  });
+
+  // loading bar — creep to ~90% while loading, snap to 100% on finish
+  const prog = $("prog");
+  let timer = null, pct = 0;
+  window.loop.onLoading((v) => {
+    if (v) {
+      clearInterval(timer); pct = 8; prog.classList.add("show"); prog.style.width = pct + "%";
+      timer = setInterval(() => { pct += (92 - pct) * 0.12; prog.style.width = pct + "%"; }, 280);
+    } else {
+      clearInterval(timer); prog.style.width = "100%";
+      setTimeout(() => { prog.classList.remove("show"); setTimeout(() => (prog.style.width = "0%"), 350); }, 220);
+    }
+  });
+</script>
+</body>
+</html>

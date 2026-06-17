@@ -3,7 +3,7 @@ import { chromium } from "playwright";
 import { readFileSync, mkdirSync } from "fs";
 
 mkdirSync(new URL("./build/", import.meta.url), { recursive: true });
-const svg = readFileSync(new URL("./assets/loop-icon.svg", import.meta.url), "utf8");
+const svg = readFileSync(new URL("../assets/loop-icon.svg", import.meta.url), "utf8");
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1024, height: 1024 } });

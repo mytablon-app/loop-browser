@@ -24,5 +24,8 @@ flows/local/*
 # --- build artifacts ---
 build/
 
+# --- Chrome-for-Testing path, set aside (kept on disk, not committed) ---
+serve.mjs
+
 # --- OS junk ---
 .DS_Store

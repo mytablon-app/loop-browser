@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loop Browser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e1a; --bg2:#0d1326; --ink:#eef2fb; --muted:rgba(238,242,251,.45);
+    --a:#7c83ff; --b:#34d8ef; --ring:rgba(124,131,255,.20); --dot:#6fe6ff; --glow:.6;
+  }
+  html[data-theme="light"]{
+    --bg:#f5f6fb; --bg2:#eceef7; --ink:#141826; --muted:rgba(20,24,38,.5);
+    --a:#5b62e6; --b:#1597bd; --ring:rgba(91,98,230,.15); --dot:#5b62e6; --glow:.32;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    font-family:'Poppins',-apple-system,system-ui,sans-serif;
+    background:radial-gradient(130% 100% at 50% 30%, var(--bg2), var(--bg) 65%) fixed;
+    color:var(--ink); overflow:hidden; transition:background .5s,color .5s;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:30px;
+  }
+  .badge{position:relative;width:300px;height:300px;display:grid;place-items:center;
+         opacity:0;animation:bloom 1.2s .1s cubic-bezier(.2,.8,.2,1) forwards;}
+  .logo{width:108px;height:108px;position:relative;z-index:3;animation:breathe 6s ease-in-out infinite;}
+  .pulse{position:absolute;width:160px;height:160px;border:1px solid var(--ring);border-radius:50%;
+         opacity:var(--glow);animation:pulse 5.5s ease-out infinite;}
+  .pulse.p2{animation-delay:1.8s;} .pulse.p3{animation-delay:3.6s;}
+  .track{position:absolute;width:240px;height:240px;border:1px dashed var(--ring);border-radius:50%;
+         opacity:var(--glow);animation:spin 34s linear infinite;}
+  .track .dot{position:absolute;top:-3px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;
+              background:var(--dot);box-shadow:0 0 12px 2px var(--dot);}
+  .word{font-weight:300;font-size:26px;letter-spacing:.02em;text-align:center;
+        opacity:0;animation:rise .9s .35s forwards;}
+  .word b{font-weight:500;background:linear-gradient(100deg,var(--a),var(--b));
+          -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .tag{margin-top:8px;font-size:12.5px;font-weight:300;color:var(--muted);letter-spacing:.04em;text-align:center;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes breathe{0%,100%{transform:scale(1);filter:drop-shadow(0 0 22px rgba(124,131,255,.35))}
+                     50%{transform:scale(1.04);filter:drop-shadow(0 0 38px rgba(52,216,239,.45))}}
+  @keyframes pulse{0%{opacity:var(--glow);transform:scale(.7)}80%{opacity:0;transform:scale(1.5)}100%{opacity:0}}
+  @keyframes bloom{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+  @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+  <div class="badge" aria-hidden="true">
+    <div class="pulse"></div><div class="pulse p2"></div><div class="pulse p3"></div>
+    <div class="track"><span class="dot"></span></div>
+    <svg class="logo" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="g" x1="16" y1="16" x2="112" y2="112" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#7c83ff"/><stop offset="1" stop-color="#34d8ef"/></linearGradient></defs>
+      <rect x="8" y="8" width="112" height="112" rx="28" fill="#0b0f1a"/>
+      <rect x="8.5" y="8.5" width="111" height="111" rx="27.5" stroke="url(#g)" stroke-opacity=".35"/>
+      <path d="M40 64a24 24 0 1 1 7 17" stroke="url(#g)" stroke-width="9" stroke-linecap="round" fill="none"/>
+      <path d="M40 44 L40 66 L60 66" stroke="url(#g)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+  </div>
+  <div>
+    <div class="word">Loop <b>Browser</b></div>
+    <div class="tag">Command from CLI · Watch it happen</div>
+  </div>
+<script>
+  // theme is set by the browser (main process) via ?theme=... — no flash, no localStorage
+  const t = new URLSearchParams(location.search).get("theme");
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+</script>
+</body>
+</html>

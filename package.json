@@ -2,17 +2,20 @@
   "name": "loop-browser",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
+  "main": "main.js",
   "description": "Loop Browser — command the web from your CLI, and watch it happen",
   "bin": {
     "loop": "cli.mjs"
   },
   "scripts": {
-    "serve": "node serve.mjs",
-    "cli": "node cli.mjs",
-    "demo": "node demo.mjs"
+    "prestart": "node scripts/rebrand-electron.mjs",
+    "start": "electron .",
+    "cli": "node cli.mjs"
   },
   "dependencies": {
     "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11"
   }
 }

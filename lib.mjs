@@ -23,8 +23,14 @@ export async function connect() {
 export async function activePage(browser) {
   const ctx = browser.contexts()[0];
   const pages = ctx.pages();
+  // target the CONTENT view: not blank, not the Loop glass toolbar
   const page =
-    pages.find((p) => !p.url().startsWith("about:")) ?? pages[0] ?? (await ctx.newPage());
+    pages.find(
+      (p) => !p.url().startsWith("about:") && !p.url().includes("/ui/toolbar.html")
+    ) ??
+    pages.find((p) => !p.url().startsWith("about:")) ??
+    pages[0] ??
+    (await ctx.newPage());
   await page.bringToFront();
   return { page, tabCount: pages.length };
 }
