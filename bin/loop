@@ -1,0 +1,22 @@
+#!/bin/sh
+# loop — Loop Browser CLI launcher (packaged app).
+# Runs the bundled CLI using the app's OWN Electron as Node (ELECTRON_RUN_AS_NODE),
+# so the user needs neither a separate Node install nor the source repo.
+# Installed as a symlink in /usr/local/bin pointing at this file inside the .app.
+
+# Resolve any symlink chain to find the real script inside the bundle.
+self="$0"
+while [ -h "$self" ]; do
+  link="$(readlink "$self")"
+  case "$link" in
+    /*) self="$link" ;;
+    *)  self="$(dirname "$self")/$link" ;;
+  esac
+done
+
+here="$(cd "$(dirname "$self")" && pwd)"             # …/Contents/Resources/app/bin
+app_root="$(cd "$here/../../../.." && pwd)"          # …/Loop Browser.app
+electron="$(ls "$app_root/Contents/MacOS/"* | head -1)"  # the Electron binary
+cli="$here/../cli.mjs"                                # bundled CLI entry
+
+exec env ELECTRON_RUN_AS_NODE=1 "$electron" "$cli" "$@"

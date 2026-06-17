@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<!-- Loop Browser splash — shown instantly at launch, runs the pre-flight
+     requirement checks (green ✓ = ready, red ✕ = missing), then reveals LB.
+     Self-contained (no web fonts / no network) so it paints the moment Electron is up. -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --bg: #0a0e1a; --fg: #e9eef7; --muted: #8a93a8;
+    --track: rgba(255,255,255,.08); --line: rgba(255,255,255,.06);
+    --g1: #6366f1; --g2: #22d3ee;
+    --ok: #34d399; --fail: #f87171; --warn: #fbbf24;
+  }
+  [data-theme="light"] {
+    --bg: #f5f6fb; --fg: #1b2030; --muted: #6b7385;
+    --track: rgba(0,0,0,.08); --line: rgba(0,0,0,.06);
+  }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: transparent; color: var(--fg);
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-user-select: none; user-select: none;
+  }
+  .card {
+    width: 340px; padding: 26px 26px 22px;
+    background: color-mix(in srgb, var(--bg) 84%, transparent);
+    border: 1px solid var(--track); border-radius: 20px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.45);
+    -webkit-backdrop-filter: blur(30px) saturate(1.4);
+    backdrop-filter: blur(30px) saturate(1.4);
+    animation: rise .35s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .ring {
+    width: 34px; height: 34px; flex: none; border-radius: 50%;
+    background: conic-gradient(from 140deg, var(--g1), var(--g2), var(--g1));
+    -webkit-mask: radial-gradient(circle 11px at center, transparent 98%, #000 100%);
+    mask: radial-gradient(circle 11px at center, transparent 98%, #000 100%);
+    animation: spin 1.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .name { font-size: 16px; font-weight: 650; letter-spacing: -.2px; }
+  .name b { background: linear-gradient(90deg, var(--g1), var(--g2));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  .checks { display: flex; flex-direction: column; gap: 2px; min-height: 132px; }
+  .row {
+    display: flex; align-items: center; gap: 10px; padding: 7px 2px;
+    border-bottom: 1px solid var(--line);
+    animation: in .25s ease both;
+  }
+  .row:last-child { border-bottom: 0; }
+  @keyframes in { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+  .ico {
+    width: 18px; height: 18px; flex: none; border-radius: 50%;
+    display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #061018;
+  }
+  .ico.pending {
+    background: none; border: 2px solid var(--track); border-top-color: var(--g2);
+    animation: spin .7s linear infinite;
+  }
+  .ico.ok   { background: var(--ok); }
+  .ico.fail { background: var(--fail); color: #2a0808; }
+  .ico.warn { background: var(--warn); color: #2a1e00; }
+  .lbl { flex: 1; font-weight: 500; }
+  .det { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .row.is-fail .det { color: var(--fail); }
+  .row.is-warn .det { color: var(--warn); }
+
+  .bar { height: 4px; margin: 16px 2px 9px; border-radius: 99px; background: var(--track); overflow: hidden; }
+  .fill { height: 100%; width: 6%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--g1), var(--g2));
+    transition: width .35s cubic-bezier(.4,0,.2,1); }
+  .status { color: var(--muted); font-size: 12px; min-height: 16px; text-align: center; }
+  .status.bad { color: var(--fail); font-weight: 600; }
+  .btn {
+    display: none; margin: 12px auto 0; padding: 8px 18px; cursor: pointer;
+    border: 1px solid var(--track); border-radius: 10px;
+    background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg);
+    font: inherit; font-weight: 600; font-size: 12.5px;
+  }
+  .btn:hover { background: color-mix(in srgb, var(--fg) 14%, transparent); }
+  body.needs-action .btn { display: block; }
+
+  body.done .card { animation: fade .3s ease forwards; }
+  @keyframes fade { to { opacity: 0; transform: translateY(-6px); } }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <div class="ring"></div>
+      <div class="name">Loop <b>Browser</b></div>
+    </div>
+    <div class="checks" id="checks"></div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="status" id="status">Checking requirements…</div>
+    <button class="btn" id="continue">Open anyway →</button>
+  </div>
+  <script>
+    const checksEl = document.getElementById('checks');
+    const fill = document.getElementById('fill');
+    const status = document.getElementById('status');
+    const rows = {};
+    let value = 0.06, done = false;
+    const render = () => { fill.style.width = Math.max(6, Math.min(100, value * 100)) + '%'; };
+
+    // Trickle so the bar never looks frozen; real progress raises the floor.
+    const trickle = setInterval(() => {
+      if (done) return;
+      const r = 0.9 - value;
+      if (r > 0.01) { value += r * 0.04; render(); }
+    }, 140);
+
+    // ── called from main.js via executeJavaScript ──
+    window.addCheck = (id, label) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<span class="ico pending"></span><span class="lbl"></span><span class="det"></span>';
+      row.querySelector('.lbl').textContent = label;
+      checksEl.appendChild(row);
+      rows[id] = row;
+    };
+    window.setCheck = (id, statusName, detail) => {
+      const row = rows[id]; if (!row) return;
+      row.classList.remove('is-fail', 'is-warn');
+      if (statusName === 'fail') row.classList.add('is-fail');
+      if (statusName === 'warn') row.classList.add('is-warn');
+      const ico = row.querySelector('.ico');
+      ico.className = 'ico ' + statusName;
+      ico.textContent = statusName === 'ok' ? '✓' : statusName === 'fail' ? '✕' : '!';
+      row.querySelector('.det').textContent = detail || '';
+    };
+    window.setProgress = (p, label) => {
+      if (!done && p > value) { value = p; render(); }
+      if (label) status.textContent = label;
+    };
+    window.summary = (allGood) => {
+      if (allGood) { status.textContent = 'All set — opening…'; }
+      else {
+        status.textContent = '⚠ Some requirements are missing';
+        status.classList.add('bad');
+        document.body.classList.add('needs-action');
+      }
+    };
+    window.setTheme = (t) => document.documentElement.setAttribute('data-theme', t);
+    window.finish = () => {
+      done = true; clearInterval(trickle);
+      value = 1; render();
+      document.body.classList.add('done');
+    };
+
+    document.getElementById('continue').addEventListener('click', () => {
+      if (window.loopSplash) window.loopSplash.continue();
+    });
+    render();
+  </script>
+</body>
+</html>

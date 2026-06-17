@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Loop Browser
 
 A **visible glass Electron browser you command from a CLI** to automate any website. It reads the
@@ -26,6 +30,15 @@ LLM only shows up to *author* or *heal* a recipe.
 - `site/` — static landing page (+ `api/downloads.js` = Vercel download counter).
 - `scripts/` — `rebrand-electron` (dev), `gen-icon`, `install-skill`, `dev-server` (serves site + live counter).
 
+## Engine internals & gotchas (the CLI↔browser marriage)
+The CLI never talks to Electron directly — it speaks **CDP** to the browser's `localhost:9222` via Playwright's `connectOverCDP`. Several non-obvious wirings make this work; touch them carefully:
+- **`main.js:152` loads `about:blank` into the root window** *on purpose* — without it the root CDP target never initializes and `connectOverCDP` hangs/times out. Don't remove it.
+- **`activePage()` (`lib.mjs`) deliberately skips `about:*` and `/ui/toolbar.html`** so the CLI drives the **content** WebContentsView, not the glass toolbar. The window is multi-view (toolbar view + one content view per tab); "the active page" = the visible content tab.
+- **`app.userAgentFallback` (`main.js:14`) is forced to a clean Chrome UA** (no Electron/app-name tokens) — UA-sniffing sites (WhatsApp Web, etc.) reject the default Electron UA with "update your browser." Keep it Chrome-shaped.
+- **Theme is owned by main and pushed into every view**, not stored in `file://` localStorage (which silently failed). New tabs inherit it via `loadFile(HOME, {query:{theme}})`; persisted to `loop-theme.json` in `userData`.
+- **`findInput`/`findClickable` poll then self-heal** (`healFind`): exact role/label first, then a deterministic fuzzy word-overlap match — this is the free "rung 1" recovery before any LLM is involved.
+- **No test suite.** Verification = run a recipe live against the running app (`npm start` first) and watch it. There is no lint/build-check step; `node cli.mjs <verb>` is the smoke test.
+
 ## CLI
 `loop open <url>` · `fill "<label>" "<text>"` · `click "<text>"` · `press <Key>` · `read` · `snapshot`
 (page as role/name tree — the brain's eyes) · `shot [name]` (screenshot for vision fallback) ·
@@ -38,7 +51,8 @@ LLM only shows up to *author* or *heal* a recipe.
   "ingredients": { "group":"<placeholder>", "outDir":"./dishes" },
   "steps": [ { "do":"open","url":"…" }, { "do":"fill","target":"<label>","value":"{group}" } ] }
 ```
-Step verbs: `open · fill · click · press · wait · assert · read · snapshot · extract · click-xy · scrape-members`.
+Step verbs: `open · fill · click · press · wait · assert · read · snapshot · extract · click-xy · scrape-members · open-chat`.
+(`open-chat {name}` = resilient contact open: full match → "mini match" fallback — search the full name, and if no result appears, shorten the search term and click the row that best matches the full name by word-overlap; tolerates extra/misspelled middle names. Used by `recipes/whatsapp-send.json`.)
 **Target by role/label/text, never coordinates** (`click-xy` = vision fallback only). Use `{placeholders}` for ingredients.
 
 ## Authoring & healing (the brain's two jobs)
@@ -58,7 +72,7 @@ Step verbs: `open · fill · click · press · wait · assert · read · snapsho
 - `npm start` — launch Loop Browser (CDP :9222). Required for `loop` to connect.
 - `node cli.mjs <args>` (or `loop …` after `npm link`).
 - `npm run site` — serve the landing site **with a working download counter** at :8099.
-- `npm run dist` — build the macOS DMG. `npm run install-skill` — install the Loop skill.
+- `npm run dist` — build the macOS DMG. **Bundles a self-contained `loop` CLI** (cli/lib/recipes + `playwright-core`, run via the app's Electron-as-Node — no system Node/repo needed); first launch offers to symlink `loop` into `/usr/local/bin`. `npm run install-skill` — install the Loop skill.
 
 ## Product direction (planned, not built)
 Closed/proprietary app (sealed engine via Electron fuses + signing) but **unlimited usage** (any site/dish, no throttle); cross-platform (mac DMG + win EXE from one codebase via CI); a **recipe ecosystem** (official + user-authored, shareable because recipes are method-only).

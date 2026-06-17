@@ -1,7 +1,7 @@
 // Shared core: connect to the persistent visible browser + watchable helpers.
 // Every command reuses ONE tab and brings it to the front before acting.
 
-import { chromium } from "playwright";
+import { chromium } from "playwright-core";
 import { mkdirSync, writeFileSync } from "fs";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -125,6 +125,56 @@ export async function findClickable(page, text, { timeout = 25000 } = {}) {
   throw new Error(`Nothing clickable matching "${text}" (waited ${timeout}ms)`);
 }
 
+// "Main match → mini match": open a search result (e.g. a WhatsApp chat) by name.
+// Search the FULL name first; if no matching result appears, progressively shorten
+// the search term (drop trailing words, down to the first name) until results show.
+// Among whatever rows appear, click the one that best matches the FULL name by
+// word-overlap — so it still picks the right person, and tolerates an extra or
+// MISSPELLED middle name (e.g. "Aasim Naeem Siddiqui" → "Aasim Naseem Siddiqui").
+export async function openChat(page, name, searchLabel = "Search or start a new chat") {
+  const words = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!words.length) throw new Error("open-chat: empty name");
+  const terms = []; // full name, then shrinking prefixes, ending at the first word
+  for (let k = words.length; k >= 1; k--) terms.push(words.slice(0, k).join(" "));
+
+  for (const term of terms) {
+    const box = await findInput(page, searchLabel);
+    await highlight(box);
+    await box.click();
+    await box.fill("");
+    await box.pressSequentially(term, { delay: 80 });
+    await sleep(1600); // let results render
+
+    // Pick the visible result row that best matches the FULL name by word-overlap.
+    const score = await page.evaluate((full) => {
+      const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+      const tw = norm(full).split(" ").filter(Boolean);
+      if (!tw.length) return null;
+      document.querySelectorAll("[data-loop-open]").forEach((e) => e.removeAttribute("data-loop-open"));
+      let best = null, bs = 0;
+      for (const el of document.querySelectorAll('[role="row"],[role="listitem"],[role="option"],[role="gridcell"],[role="button"]')) {
+        const nm = norm(el.getAttribute("aria-label") || el.textContent || "");
+        if (!nm) continue;
+        const set = new Set(nm.split(" "));
+        const s = tw.filter((w) => set.has(w)).length / tw.length;
+        if (s > bs) { bs = s; best = el; }
+      }
+      if (best && bs >= 0.5) { best.setAttribute("data-loop-open", "1"); return bs; }
+      return null;
+    }, name);
+
+    if (score) {
+      const el = page.locator('[data-loop-open="1"]').first();
+      await highlight(el);
+      await el.click();
+      const mini = term === name ? "" : ` (mini match — searched "${term}")`;
+      console.log(`  · open-chat "${name}" → ${Math.round(score * 100)}% match${mini}`);
+      return;
+    }
+  }
+  throw new Error(`open-chat: no result matching "${name}" (tried ${terms.length} search terms)`);
+}
+
 // ---- Recipe engine ----------------------------------------------------------
 // Fill {placeholders} in a string from the ingredients map.
 export function interpolate(str, vars) {
@@ -157,6 +207,10 @@ export async function runStep(page, step, vars = {}) {
       console.log(`  · click "${v(step.target)}"`);
       break;
     }
+    case "open-chat":
+      // Resilient contact open: full match → mini match (see openChat).
+      await openChat(page, v(step.name), v(step.search || "Search or start a new chat"));
+      break;
     case "press":
       await page.keyboard.press(step.key || "Enter");
       console.log(`  · press ${step.key || "Enter"}`);

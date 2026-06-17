@@ -1,0 +1,18 @@
+{
+  "name": "whatsapp-send",
+  "title": "Send a WhatsApp message",
+  "description": "Open WhatsApp Web, find a contact, and send them a message. The one recipe for WhatsApp messaging — `open-chat` resolves the contact robustly: it searches the full name, and if no result appears it falls back to a 'mini match' (shorter search term), then opens the row that best matches the name by word-overlap — so it tolerates an extra or misspelled middle name and first-name-only inputs. You must already be logged in (only the human logs in; the session persists in the local profile). Cook with: loop run whatsapp-send contact=\"<name>\" message=\"<text>\"",
+  "version": "1.1.0",
+  "ingredients": {
+    "contact": "<contact name (full or partial)>",
+    "message": "<the message to send>"
+  },
+  "steps": [
+    { "do": "open", "url": "https://web.whatsapp.com" },
+    { "do": "wait", "ms": 5000 },
+    { "do": "open-chat", "name": "{contact}" },
+    { "do": "wait", "ms": 1200 },
+    { "do": "fill", "target": "Type a message", "value": "{message}" },
+    { "do": "press", "key": "Enter" }
+  ]
+}

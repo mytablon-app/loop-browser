@@ -22,24 +22,32 @@
     "directories": {
       "output": "build/dist"
     },
+    "asar": false,
     "files": [
       "main.js",
+      "cli.mjs",
+      "lib.mjs",
       "ui/**/*",
       "assets/**/*",
+      "bin/**/*",
+      "recipes/**/*",
+      "!recipes/local/**",
       "package.json",
-      "!node_modules/playwright/**",
-      "!node_modules/playwright-core/**"
+      "!node_modules/playwright/**"
     ],
     "mac": {
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": "universal"
+        }
       ],
       "icon": "assets/loop.icns",
       "category": "public.app-category.productivity"
     }
   },
   "dependencies": {
-    "playwright": "^1.49.0"
+    "playwright-core": "^1.61.0"
   },
   "devDependencies": {
     "electron": "^33.4.11",

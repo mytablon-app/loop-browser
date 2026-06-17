@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
-:root{
+:root{--claude:#d97757;
   --ink:#070b14; --ink2:#0b1120;
   --panel:rgba(255,255,255,.045); --panel-2:rgba(255,255,255,.07);
   --border:rgba(255,255,255,.10); --border-strong:rgba(255,255,255,.18);
@@ -89,7 +89,7 @@ nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px);-webkit-backdrop
 @media(max-width:680px){.nav-links .hide{display:none}}
 
 /* hero */
-header{position:relative;padding:96px 0 40px;text-align:center}
+header{position:relative;text-align:center;min-height:calc(100svh - 62px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 0 28px}
 .orbit{position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:760px;max-width:120vw;aspect-ratio:1;z-index:-1;opacity:.55}
 .orbit i{position:absolute;inset:0;margin:auto;border:1px solid var(--border);border-radius:50%}
 .orbit i:nth-child(1){width:300px;height:300px}
@@ -102,21 +102,23 @@ header{position:relative;padding:96px 0 40px;text-align:center}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.orbit i,.orbit .dot{animation:none}}
 
-.hero-logo{width:96px;height:96px;border-radius:24px;box-shadow:var(--shadow);}
+.hero-logo{width:74px;height:74px;border-radius:20px;box-shadow:var(--shadow);}
+.cc{color:var(--claude);font-weight:700;white-space:nowrap}
+.cc-star{width:.92em;height:.92em;vertical-align:-.13em;margin-right:.26em}
 .pill{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:var(--muted);
-  border:1px solid var(--border);background:var(--panel);padding:6px 14px;border-radius:999px;margin-bottom:26px}
+  border:1px solid var(--border);background:var(--panel);padding:6px 14px;border-radius:999px;margin-bottom:14px}
 .pill .ok{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
 h1{font-family:var(--display);font-weight:800;letter-spacing:-.035em;line-height:1.02;
-  font-size:clamp(2.7rem,7vw,5rem);margin:22px 0 18px}
+  font-size:clamp(2.4rem,6vw,4.4rem);margin:10px 0 10px}
 h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lede{font-size:clamp(1.05rem,2vw,1.3rem);color:var(--muted);max-width:620px;margin:0 auto 34px}
+.lede{font-size:clamp(1.05rem,2vw,1.3rem);color:var(--muted);max-width:620px;margin:0 auto 20px}
 .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .btn{font-family:var(--body);font-weight:700;font-size:1.02rem;text-decoration:none;padding:15px 30px;border-radius:14px;transition:.22s;display:inline-flex;align-items:center;gap:10px}
 .btn-primary{color:#fff;background:var(--grad-deep);box-shadow:0 16px 40px -12px var(--glow),0 0 0 1px rgba(255,255,255,.06) inset}
 .btn-primary:hover{transform:translateY(-2px);box-shadow:0 22px 50px -12px var(--glow)}
 .btn-ghost{color:var(--text);background:var(--panel);border:1px solid var(--border-strong)}
 .btn-ghost:hover{transform:translateY(-2px);background:var(--panel-2)}
-.meta{margin-top:22px;font-size:.85rem;color:var(--faint);font-family:var(--mono)}
+.meta{margin-top:14px;font-size:.85rem;color:var(--faint);font-family:var(--mono)}
 
 /* reveal */
 .rv{opacity:0;transform:translateY(18px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
@@ -180,10 +182,9 @@ code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1p
 .step a:hover{text-decoration:underline}
 
 /* downloads counter pill */
-.dl-count{display:inline-flex;align-items:center;gap:9px;margin-top:18px;padding:9px 18px;border-radius:999px;
-  border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:.85rem;font-family:var(--mono);backdrop-filter:blur(8px)}
-.dl-count b{color:var(--text);font-weight:700}
-.dl-count .pulse{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.dl-count{display:inline-flex;align-items:center;gap:6px;margin-top:16px;color:var(--faint);font-size:.85rem;font-family:var(--mono)}
+.dl-count b{color:var(--muted);font-weight:700}
+.dl-count .pulse{display:none}
 
 /* terminal */
 .term{max-width:760px;margin:0 auto;border-radius:16px;border:1px solid var(--border-strong);background:color-mix(in srgb,#05080f 78%,transparent);
@@ -264,13 +265,12 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
   <div class="orbit"><i></i><i></i><i></i><div class="dot"></div><div class="dot dot2"></div></div>
   <div class="wrap">
     <img src="loop-icon.svg" class="hero-logo rv d1" alt="Loop Browser" />
-    <div class="rv d2" style="margin-top:26px"><span class="pill"><span class="ok"></span>Local-first · Cross-platform · MIT</span></div>
-    <h1 class="rv d3">Command the web<br>from your <span class="g">CLI</span>.</h1>
-    <p class="lede rv d4"><strong>Loop Browser</strong> is your kitchen. It just needs a head chef (CLI) — to turn your simple <strong>recipes</strong> (commands) into amazing <strong>dishes</strong> (automations).</p>
+    <h1 class="rv d3">Command any site<br>from your <span class="g">CLI</span>.</h1>
+    <p class="rv d3" style="font-size:clamp(1.1rem,2.2vw,1.45rem);font-weight:650;letter-spacing:-.01em;margin:0 auto 14px;max-width:620px">An <span class="g">unmatched</span> tool for <span class="cc"><svg class="cc-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1L12.8 8.9L17.5 2.5L14.3 9.7L21.5 6.5L15.1 11.2L23 12L15.1 12.8L21.5 17.5L14.3 14.3L17.5 21.5L12.8 15.1L12 23L11.2 15.1L6.5 21.5L9.7 14.3L2.5 17.5L8.9 12.8L1 12L8.9 11.2L2.5 6.5L9.7 9.7L6.5 2.5L11.2 8.9Z"/></svg>Claude&nbsp;Code</span> users.</p>
+    <p class="lede rv d4">Turn repeating web tasks into <strong>bots</strong>. Write once; replay forever.<br><strong class="g">It's free!</strong></p>
     <div class="cta rv d5">
       <a href="#download" class="btn btn-primary">↓ Download Loop<span class="btn-beta">beta</span></a>
     </div>
-    <div class="meta rv d6">drive the active tab · watch every step · your logins never leave your machine</div>
     <div class="rv d6"><span class="dl-count" id="dl-count" style="display:none"><span class="pulse"></span><b id="dl-count-n">—</b>&nbsp;downloads</span></div>
   </div>
 </header>
@@ -305,7 +305,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
       <div class="chapter">
         <div class="num">Chapter two · The kitchen</div>
         <p class="tale">So he built a <b>kitchen</b> and brought in a <b>head chef</b> who could cook anything he was asked.</p>
-        <p class="mean">The kitchen is <b>Loop Browser</b>; the head chef is the <b>CLI</b> you command — with an LLM (Claude Code) for a brain.</p>
+        <p class="mean">The kitchen is <b>Loop Browser</b>; the head chef is the <b>CLI</b> you command — with an LLM (<span class="cc">Claude Code</span>) for a brain.</p>
       </div>
       <div class="chapter">
         <div class="num">Chapter three · The recipes</div>
@@ -339,19 +339,23 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <div class="menu">
       <div class="dish">
         <div class="dish-top"><span class="dish-name">Post to LinkedIn</span><span class="dish-lead"></span><span class="dish-garnish">scheduled</span></div>
-        <p>Draft, schedule, and publish posts — your presence keeps running while you don't.</p>
+        <p>Draft, schedule, and publish — on autopilot.</p>
       </div>
       <div class="dish">
         <div class="dish-top"><span class="dish-name">Run your WhatsApp</span><span class="dish-lead"></span><span class="dish-garnish">hands-off</span></div>
-        <p>Send messages, pull a group's contacts, follow up on replies — without lifting a finger.</p>
+        <p>Send messages, pull contacts, follow up.</p>
       </div>
       <div class="dish">
-        <div class="dish-top"><span class="dish-name">Fill any form</span><span class="dish-lead"></span><span class="dish-garnish">deterministic</span></div>
-        <p>Applications, leads, weekly reports — submitted flawlessly, every single time.</p>
+        <div class="dish-top"><span class="dish-name">Lead gen &amp; outreach</span><span class="dish-lead"></span><span class="dish-garnish">at scale</span></div>
+        <p>Collect contacts from target websites.</p>
       </div>
       <div class="dish">
-        <div class="dish-top"><span class="dish-name">Pull any report</span><span class="dish-lead"></span><span class="dish-garnish">your login, local</span></div>
-        <p>Lift a table from a dashboard or any site into a spreadsheet, on a schedule.</p>
+        <div class="dish-top"><span class="dish-name">Sales ops &amp; data entry</span><span class="dish-lead"></span><span class="dish-garnish">deterministic</span></div>
+        <p>Update the CRM, enter orders, sync data.</p>
+      </div>
+      <div class="dish">
+        <div class="dish-top"><span class="dish-name">Reporting &amp; data pulls</span><span class="dish-lead"></span><span class="dish-garnish">your login, local</span></div>
+        <p>Pull dashboards into spreadsheets, on schedule.</p>
       </div>
     </div>
     <p class="menu-note center">Don't see your dish? Hand the chef a recipe with <code>loop author</code>.</p>
@@ -361,10 +365,10 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 <section id="privacy">
   <div class="wrap split">
     <div>
-      <div class="eyebrow">Local-first by design</div>
-      <h2>Your data never leaves your machine.</h2>
-      <p class="sub" style="margin-bottom:22px">The recipe travels; the meal, the pantry, and the key stay home.</p>
-      <p class="sub">Only you log in — the cook and chef work <em>inside</em> your session, but never see your credentials.</p>
+      <div class="eyebrow">You hold the key</div>
+      <h2>Your real accounts, automated.</h2>
+      <p class="sub" style="margin-bottom:22px">LinkedIn, WhatsApp, your CRM — the sites behind a login that headless cloud agents can't reach. You log in once, in a window you own; it works <em>inside</em> your session, and you watch every step.</p>
+      <p class="sub">The recipe travels; your data, your dishes, and your key stay home — the cook and chef never see your credentials.</p>
     </div>
     <div class="ledger">
       <div class="row"><span class="ic">📋</span><span class="k">Recipe (the method)</span><span class="ships">SHIPS →</span></div>
@@ -383,7 +387,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
       <div class="card"><div class="num">12×</div><div><h3>Reads code, not pixels</h3><p>Acts on the accessibility tree — ~12× cheaper than vision, far more reliable.</p></div></div>
       <div class="card"><div class="num">$0</div><div><h3>Deterministic replay</h3><p>No LLM in the loop. Known tasks cost nothing to repeat.</p></div></div>
       <div class="card"><div class="num">🛡️</div><div><h3>Injection-resistant</h3><p>Replay never feeds page text to an LLM — immune to prompt-injection.</p></div></div>
-      <div class="card"><div class="num">🔑</div><div><h3>You hold the keys</h3><p>Runs in a window you watch. Only you log in — no cloud acting as you.</p></div></div>
+      <div class="card"><div class="num">🔑</div><div><h3>Works behind your login</h3><p>Runs on your real, logged-in accounts where headless cloud agents stall. Only you log in — no cloud acting as you.</p></div></div>
     </div>
   </div>
 </section>
@@ -391,15 +395,14 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 <section id="start">
   <div class="wrap center">
     <div class="eyebrow">Get started</div>
-    <h2>Your first dish, in six steps.</h2>
+    <h2>Your first dish, in five steps.</h2>
     <p class="sub">What each piece is, and where to get it.</p>
     <div class="steps">
       <div class="step"><div class="n">1</div><h3>Download Loop</h3><p>The kitchen — the glass browser you'll command. Grab the build for your computer.</p><a href="#download">Get the app →</a></div>
-      <div class="step"><div class="n">2</div><h3>Get Claude Code</h3><p>The chef's brain — the LLM that writes &amp; heals recipes, on your own subscription.</p><a href="https://claude.com/claude-code" target="_blank" rel="noopener">claude.com/claude-code →</a></div>
-      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>The command line you cook from — <code>loop run</code>, <code>loop author</code>. Ships with the app.</p></div>
-      <div class="step"><div class="n">4</div><h3>Install Node.js</h3><p>Runs the CLI under the hood. Version 18 or newer — a one-time install.</p><a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org →</a></div>
-      <div class="step"><div class="n">5</div><h3>Connect</h3><p>Launch Loop — it opens and listens on a local port. Every <code>loop</code> command (yours or Claude's) connects to it instantly. No config, no cloud.</p></div>
-      <div class="step"><div class="n">6</div><h3>Cook</h3><p>Run a dish — <code>loop run hn-top</code> — or have the chef write one with <code>loop author</code>. Watch every step.</p></div>
+      <div class="step"><div class="n">2</div><h3>Get <span class="cc">Claude Code</span></h3><p>The chef's brain — the LLM that writes &amp; heals recipes, on your own subscription.</p><a href="https://claude.com/claude-code" target="_blank" rel="noopener">claude.com/claude-code →</a></div>
+      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>The command line you cook from — <code>loop run</code>, <code>loop author</code>. Bundled in the app; first launch adds it to your terminal — no Node, no setup.</p></div>
+      <div class="step"><div class="n">4</div><h3>Connect</h3><p>Launch Loop — it opens and listens on a local port. Every <code>loop</code> command (yours or Claude's) connects to it instantly. No config, no cloud.</p></div>
+      <div class="step"><div class="n">5</div><h3>Cook</h3><p>Run a dish — <code>loop run hn-top</code> — or have the chef write one with <code>loop author</code>. Watch every step.</p></div>
     </div>
   </div>
 </section>
@@ -415,7 +418,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
       </div>
       <div id="dl-meta" class="dl-meta">Mac &amp; Windows · desktop app</div>
       <p id="dl-other" class="note" style="margin-top:14px"></p>
-      <p id="dl-note" class="note">First launch: the build is unsigned — allow it once, then the CLI drives it over a local port.</p>
+      <p id="dl-note" class="note">First launch: the build is unsigned (beta) — <b>right-click the app → Open</b> to allow it once. macOS remembers after that. Runs on Apple Silicon &amp; Intel.</p>
     </div>
   </div>
 </section>
