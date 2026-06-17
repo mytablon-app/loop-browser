@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loop Browser</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='28' fill='%230b0f1a'/%3E%3Cpath d='M40 64a24 24 0 1 1 7 17' stroke='%2322d3ee' stroke-width='9' fill='none' stroke-linecap='round'/%3E%3Cpath d='M40 44 L40 66 L60 66' stroke='%236366f1' stroke-width='9' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<style>
+  :root { --grad: linear-gradient(135deg,#6366f1,#22d3ee); }
+  * { box-sizing: border-box; }
+  html,body { height:100%; margin:0; }
+  body {
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #16213e 0%, #0b0f1a 55%, #070a12 100%);
+    color: #e6edf3; display:flex; align-items:center; justify-content:center;
+  }
+  .wrap { text-align:center; padding:40px; max-width:680px; }
+  .mark { width:96px; height:96px; margin:0 auto 24px; }
+  h1 { font-size:44px; margin:0 0 8px; letter-spacing:-1px; }
+  h1 .g { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .tag { color:#9aa7b8; font-size:17px; margin:0 0 36px; }
+  .cmds { text-align:left; background:#0d1322; border:1px solid #1e2a44; border-radius:14px;
+          padding:18px 20px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:14px; }
+  .cmds .c { color:#22d3ee; }
+  .cmds .a { color:#e6edf3; }
+  .cmds .d { color:#5b6b86; }
+  .cmds div { padding:4px 0; }
+  .foot { margin-top:28px; color:#5b6b86; font-size:13px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <svg class="mark" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="g" x1="16" y1="16" x2="112" y2="112" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>
+      <rect x="8" y="8" width="112" height="112" rx="28" fill="#0b0f1a"/>
+      <rect x="8.5" y="8.5" width="111" height="111" rx="27.5" stroke="url(#g)" stroke-opacity="0.35"/>
+      <path d="M40 64a24 24 0 1 1 7 17" stroke="url(#g)" stroke-width="9" stroke-linecap="round" fill="none"/>
+      <path d="M40 44 L40 66 L60 66" stroke="url(#g)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+    <h1>Loop <span class="g">Browser</span></h1>
+    <p class="tag">Command the web from your CLI. Watch it happen.</p>
+    <div class="cmds">
+      <div><span class="d"># drive this window from your terminal</span></div>
+      <div><span class="c">loop</span> <span class="a">open</span> https://eventbrite.com</div>
+      <div><span class="c">loop</span> <span class="a">fill</span> "search" "my event"</div>
+      <div><span class="c">loop</span> <span class="a">click</span> "Edit"</div>
+      <div><span class="c">loop</span> <span class="a">press</span> Enter</div>
+    </div>
+    <p class="foot">Loop Browser · one tab · always visible · you stay in control</p>
+  </div>
+</body>
+</html>

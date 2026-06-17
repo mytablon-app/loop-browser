@@ -1,0 +1,12 @@
+{
+  "name": "demo-search",
+  "description": "Search Wikipedia for a term — proves a saved Flow replays with no LLM",
+  "inputs": { "term": "Playwright automation" },
+  "steps": [
+    { "do": "open",  "url": "https://en.wikipedia.org/wiki/Main_Page" },
+    { "do": "fill",  "target": "search", "value": "{term}" },
+    { "do": "press", "key": "Enter" },
+    { "do": "wait",  "ms": 1500 },
+    { "do": "read" }
+  ]
+}

@@ -1,0 +1,28 @@
+# --- dependencies ---
+node_modules/
+
+# --- 🔴 PRIVACY-CRITICAL: never commit these ---
+# Persistent login profile = live cookies/sessions for LinkedIn, Eventbrite, etc.
+# Committing this publishes your logins. Stays on your machine, always.
+.loop-profile/
+user-data/
+*.profile/
+
+# Failure screenshots can show logged-in/private pages (DMs, personal data).
+runs/
+
+# Your PRIVATE recipes (may hardcode company IDs / personal text).
+# Ship templates in flows/, keep personal ones in flows/local/ (folder kept, contents ignored).
+flows/local/*
+!flows/local/.gitkeep
+*.local.json
+
+# Secrets (e.g. a cloud LLM key for the chef, if ever used).
+.env
+.env.*
+
+# --- build artifacts ---
+build/
+
+# --- OS junk ---
+.DS_Store
