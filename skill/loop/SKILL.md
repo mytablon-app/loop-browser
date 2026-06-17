@@ -41,7 +41,7 @@ it). If a `loop` command errors with "No browser running", tell the user to open
   accessibility snapshot + goal) and scaffold `recipes/<name>.json`. THEN you write the steps (see below).
 - `loop scrape-members "<group>" [outDir]` — (WhatsApp-specific) harvest the open group's members → CSV.
 
-## Authoring a recipe (the Head Chef's main job)
+## Authoring a recipe (your main job, as the brain)
 1. `loop open <url>` to the starting page, then `loop snapshot` to see the real role/name labels.
 2. (Optional) `loop author <name> "<goal>"` to capture a brief + scaffold the file.
 3. Write `recipes/<name>.json`:

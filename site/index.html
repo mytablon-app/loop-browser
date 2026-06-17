@@ -68,6 +68,12 @@ nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px);-webkit-backdrop
 .brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;text-decoration:none;color:var(--text)}
 .brand img{width:34px;height:34px;border-radius:9px}
 .brand b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.beta{font-family:var(--body);font-size:.6rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  color:#ff9f43;background:rgba(255,159,67,.13);border:1px solid rgba(255,159,67,.45);
+  padding:2px 7px;border-radius:999px;margin-left:8px;vertical-align:middle;line-height:1}
+.btn-beta{font-size:.6rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  color:#fff;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.4);
+  padding:2px 6px;border-radius:999px;margin-left:9px;vertical-align:middle;line-height:1}
 .nav-links{margin-left:auto;display:flex;align-items:center;gap:2px}
 .nav-links a.lnk{position:relative;color:var(--muted);text-decoration:none;font-size:.9rem;font-weight:500;letter-spacing:-.005em;padding:6px 2px;margin:0 14px;transition:color .2s}
 .nav-links a.lnk::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;border-radius:2px;background:var(--grad);transform:scaleX(0);transform-origin:left;transition:transform .26s cubic-bezier(.2,.7,.2,1)}
@@ -241,7 +247,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 
 <nav>
   <div class="nav-in">
-    <a href="#" class="brand" aria-label="Loop Browser"><img src="loop-icon.svg" alt="" />Loop <b>Browser</b></a>
+    <a href="#" class="brand" aria-label="Loop Browser (beta)"><img src="loop-icon.svg" alt="" />Loop <b>Browser</b><span class="beta">beta</span></a>
     <div class="nav-links">
       <a href="#kitchen" class="lnk hide">Story</a>
       <a href="#menu" class="lnk hide">Menu</a>
@@ -262,7 +268,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <h1 class="rv d3">Command the web<br>from your <span class="g">CLI</span>.</h1>
     <p class="lede rv d4"><strong>Loop Browser</strong> is your kitchen. It just needs a head chef (CLI) — to turn your simple <strong>recipes</strong> (commands) into amazing <strong>dishes</strong> (automations).</p>
     <div class="cta rv d5">
-      <a href="#download" class="btn btn-primary">↓ Download Loop</a>
+      <a href="#download" class="btn btn-primary">↓ Download Loop<span class="btn-beta">beta</span></a>
     </div>
     <div class="meta rv d6">drive the active tab · watch every step · your logins never leave your machine</div>
     <div class="rv d6"><span class="dl-count" id="dl-count" style="display:none"><span class="pulse"></span><b id="dl-count-n">—</b>&nbsp;downloads</span></div>
@@ -314,7 +320,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
       <div class="chapter">
         <div class="num">Chapter five · The success</div>
         <p class="tale">Word spread. The restaurant thrived. Today <b>a hundred line cooks</b> work the kitchen — and Tom simply runs the place.</p>
-        <p class="mean">Cheap <b>bots</b> replay your recipes at scale. You own the menu; the kitchen does the work.</p>
+        <p class="mean"><b>Chef bots</b> replay your recipes at scale. You own the menu; the kitchen does the work.</p>
       </div>
     </div>
     <div class="center" style="margin-top:10px">
@@ -326,7 +332,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 <section id="menu">
   <div class="wrap center">
     <div class="eyebrow">On the menu</div>
-    <h2>A dish is an automation, plated.</h2>
+    <h2>Sample dishes you can cook</h2>
     <p class="sub center">If you can do it in a browser, it can be automated.</p>
   </div>
   <div class="wrap">
@@ -454,12 +460,12 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
   if(os==='win'){
     $p.textContent='↓ Download for Windows'; $p.href=FILES.win;
     $m.textContent='Windows 10/11 · 64-bit · .exe';
-    $o.innerHTML='On a Mac? <a href="'+FILES.mac+'">Get the macOS version →</a>';
+    $o.innerHTML='';
     $n.innerHTML='Unsigned build — on the SmartScreen prompt, click <strong>More info → Run anyway</strong>.';
   } else if(os==='mac'){
     $p.textContent='↓ Download for macOS'; $p.href=FILES.mac;
     $m.textContent='macOS · Apple Silicon · .dmg';
-    $o.innerHTML='On Windows? <a href="'+FILES.win+'">Get the Windows version →</a>';
+    $o.innerHTML='';
     $n.innerHTML='Unsigned build — right-click the app → <strong>Open</strong> on first launch.';
   } else if(os==='mobile'){
     $p.textContent='↓ Download'; $p.href='#'; $p.setAttribute('aria-disabled','true');
@@ -471,6 +477,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     $m.textContent='Mac &amp; Windows';
     $o.innerHTML='Pick your platform: <a href="'+FILES.mac+'">macOS (.dmg)</a> · <a href="'+FILES.win+'">Windows (.exe)</a>';
   }
+  if(os!=='mobile') $p.insertAdjacentHTML('beforeend',' <span class="btn-beta">beta</span>');
 
   // Download counter — REAL persisted stats via /api/downloads (Vercel + KV).
   // Each click on a Mac/Win download = +1. Locally/pre-deploy the API is absent → pill shows "—".

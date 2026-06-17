@@ -13,12 +13,15 @@
     "cli": "node cli.mjs",
     "install-skill": "node scripts/install-skill.mjs",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --mac"
+    "dist": "electron-builder --mac",
+    "site": "node scripts/dev-server.mjs"
   },
   "build": {
     "appId": "com.mytablon.loopbrowser",
     "productName": "Loop Browser",
-    "directories": { "output": "build/dist" },
+    "directories": {
+      "output": "build/dist"
+    },
     "files": [
       "main.js",
       "ui/**/*",
@@ -28,7 +31,9 @@
       "!node_modules/playwright-core/**"
     ],
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "assets/loop.icns",
       "category": "public.app-category.productivity"
     }
