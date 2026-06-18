@@ -254,9 +254,10 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
       <a href="#menu" class="lnk hide">Menu</a>
       <a href="#privacy" class="lnk hide">Privacy</a>
       <a href="#start" class="lnk hide">Get started</a>
+      <a href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener" class="lnk hide">GitHub</a>
       <span class="nav-div hide"></span>
       <button class="icon-btn" id="theme" aria-label="Toggle theme">🌙</button>
-      <a href="#download" class="btn-sm">Download</a>
+      <a href="#download" class="btn-sm">Install</a>
     </div>
   </div>
 </nav>
@@ -399,9 +400,9 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <h2>Your first dish, in five steps.</h2>
     <p class="sub">What each piece is, and where to get it.</p>
     <div class="steps">
-      <div class="step"><div class="n">1</div><h3>Download Loop</h3><p>The kitchen — the glass browser you'll command. Grab the build for your computer.</p><a href="#download">Get the app →</a></div>
+      <div class="step"><div class="n">1</div><h3>Get Loop</h3><p>The kitchen — the glass browser you'll command. Have Node? <code>npx loop-browser</code>. Otherwise grab the desktop app.</p><a href="#download">Install options →</a></div>
       <div class="step"><div class="n">2</div><h3>Get <span class="cc">Claude Code</span></h3><p>The chef's brain — the LLM that writes &amp; heals recipes, on your own subscription.</p><a href="https://claude.com/claude-code" target="_blank" rel="noopener">claude.com/claude-code →</a></div>
-      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>The command line you cook from — <code>loop run</code>, <code>loop author</code>. Bundled in the app; first launch adds it to your terminal — no Node, no setup.</p></div>
+      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>The command line you cook from — <code>loop run</code>, <code>loop author</code>. Comes with Loop: bundled in the app, or on your PATH after <code>npm i -g loop-browser</code>.</p></div>
       <div class="step"><div class="n">4</div><h3>Connect</h3><p>Launch Loop — it opens and listens on a local port. Every <code>loop</code> command (yours or Claude's) connects to it instantly. No config, no cloud.</p></div>
       <div class="step"><div class="n">5</div><h3>Cook</h3><p>Run a dish — <code>loop run hn-top</code> — or have the chef write one with <code>loop author</code>. Watch every step.</p></div>
     </div>
@@ -412,19 +413,22 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
   <div class="wrap">
     <div class="download">
       <div class="eyebrow" style="color:var(--cyan)">Ready when you are</div>
-      <h2>Download your loop</h2>
-      <p class="sub center" style="margin-top:6px">Command the web — and cook your first dish.</p>
-      <div class="cta" style="margin-top:30px">
-        <a id="dl-primary" href="#" class="btn btn-primary">↓ Download Loop</a>
+      <h2>Run your loop</h2>
+      <p class="sub center" style="margin-top:6px">Have <b>Node</b>? One command — every OS, no installer, no Windows SmartScreen/SAC block.</p>
+      <div style="margin-top:26px">
+        <code style="font-size:1.15rem;padding:14px 26px;display:inline-block;border-color:var(--border-strong)">npx loop-browser</code>
       </div>
-      <div id="dl-meta" class="dl-meta">Mac &amp; Windows · desktop app</div>
-      <p id="dl-other" class="note" style="margin-top:14px"></p>
-      <p id="dl-note" class="note">First launch: the build is unsigned (beta) — <b>right-click the app → Open</b> to allow it once. macOS remembers after that. Runs on Apple Silicon &amp; Intel.</p>
-      <div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border)">
-        <p class="sub center" style="font-size:.98rem;margin-bottom:12px">Have <b>Node</b>? Skip the download entirely:</p>
-        <code style="font-size:1.02rem;padding:11px 20px;display:inline-block;border-color:var(--border-strong)">npx loop-browser</code>
-        <p class="note" style="margin-top:12px">Cross-platform · no installer · runs even where Windows <b>Smart App Control</b> blocks the .exe.</p>
+      <p class="note" style="margin-top:12px">or <code>npm i -g loop-browser</code> to put <code>loop-browser</code> + <code>loop</code> on your PATH.</p>
+      <div style="margin-top:32px;padding-top:28px;border-top:1px solid var(--border)">
+        <p class="sub center" style="font-size:.98rem;margin-bottom:16px">No Node? Get the desktop app:</p>
+        <div class="cta" style="margin-top:0">
+          <a id="dl-primary" href="#" class="btn btn-primary">↓ Download Loop</a>
+        </div>
+        <div id="dl-meta" class="dl-meta">Mac &amp; Windows · desktop app</div>
+        <p id="dl-other" class="note" style="margin-top:14px"></p>
+        <p id="dl-note" class="note">First launch: the build is unsigned (beta) — <b>right-click the app → Open</b> to allow it once. macOS remembers after that. Runs on Apple Silicon &amp; Intel.</p>
       </div>
+      <p class="note" style="margin-top:26px">Open source on <a href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener">GitHub</a> · <a href="https://www.npmjs.com/package/loop-browser" target="_blank" rel="noopener">npm</a> · MIT.</p>
     </div>
   </div>
 </section>
@@ -433,6 +437,8 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
   <div class="wrap foot">
     <a href="#" class="brand"><img src="loop-icon.svg" alt="" style="width:24px;height:24px;border-radius:6px" />Loop <b style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">Browser</b></a>
     <span>MIT licensed</span>
+    <a href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.npmjs.com/package/loop-browser" target="_blank" rel="noopener">npm</a>
     <span class="sep">Command from CLI · Watch it happen</span>
   </div>
 </footer>
