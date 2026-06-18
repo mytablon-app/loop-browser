@@ -239,7 +239,8 @@ html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 90%,transpar
 /* founder-friendly install cards + copy button */
 .get-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:34px;text-align:left}
 @media(max-width:720px){.get-grid{grid-template-columns:1fr}}
-.get-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:26px;backdrop-filter:blur(10px);display:flex;flex-direction:column}
+.get-card{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:26px;backdrop-filter:blur(10px);display:flex;flex-direction:column}
+.get-num{position:absolute;top:20px;right:22px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:.95rem;background:var(--panel-2);border:1px solid var(--border-strong);color:var(--muted)}
 .get-tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px}
 .get-card h3{font-family:var(--display);font-weight:700;font-size:1.32rem;letter-spacing:-.01em;margin-bottom:8px}
 .get-card>p{color:var(--muted);font-size:.96rem}
@@ -252,6 +253,10 @@ html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 90%,transpar
 .cmd .copy.ok{color:#28c840;border-color:#28c840}
 .copied{font-size:.78rem;color:#28c840;font-family:var(--mono);margin-left:10px;opacity:0;transition:opacity .2s}
 .copied.show{opacity:1}
+.cmd-row{margin-top:16px}
+.cmd-label{display:block;font-size:.78rem;color:var(--faint);margin-bottom:7px}
+.cmd{width:100%}
+.cmd code{flex:1}
 
 footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 .foot{display:flex;align-items:center;gap:16px;flex-wrap:wrap;color:var(--faint);font-size:.88rem}
@@ -289,7 +294,6 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <div class="cta rv d5">
       <a href="#download" class="btn btn-primary">↓ Download Loop<span class="btn-beta">beta</span></a>
     </div>
-    <p class="rv d5" style="margin-top:14px;font-size:.9rem;color:var(--faint)">free · Mac &amp; Windows · or <a href="#download" style="color:var(--cyan);text-decoration:none;font-weight:600">install with one command →</a></p>
     <div class="rv d6"><span class="dl-count" id="dl-count" style="display:none"><span class="pulse"></span><b id="dl-count-n">—</b>&nbsp;downloads</span></div>
   </div>
 </header>
@@ -435,27 +439,30 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
       <div class="get-grid">
 
         <div class="get-card">
+          <div class="get-num">1</div>
           <div class="get-tag">★ Easiest · for everyone</div>
           <h3>Download the app</h3>
-          <p>Click the button, open the file it downloads, and follow the prompts — just like installing any other app.</p>
-          <div class="cta" style="margin-top:18px">
+          <div class="cta" style="margin-top:16px">
             <a id="dl-primary" href="#" class="btn btn-primary">↓ Download Loop</a>
           </div>
-          <div id="dl-meta" class="dl-meta">Mac &amp; Windows · desktop app</div>
-          <p id="dl-other" class="note" style="margin-top:12px"></p>
-          <p id="dl-note" class="note">First open: it's an early build, so your computer may ask you to confirm it's safe — that's expected.</p>
+          <div id="dl-meta" class="dl-meta">Mac &amp; Windows</div>
+          <p id="dl-other" class="note" style="margin-top:10px"></p>
+          <p id="dl-note" class="note">Open it like any app.</p>
         </div>
 
         <div class="get-card">
+          <div class="get-num">2</div>
           <div class="get-tag">If you use a terminal</div>
           <h3>One command</h3>
-          <p>Open the <b>Terminal</b> app, paste the line below, and press <b>Enter</b>. It downloads and opens Loop Browser for you — nothing else to install.</p>
-          <div class="cmd" style="margin-top:18px">
-            <code>npx loop-browser</code>
-            <button class="copy" data-copy="npx loop-browser" aria-label="Copy command" title="Copy"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
-            <span class="copied" aria-live="polite">Copied!</span>
+          <div class="cmd-row">
+            <span class="cmd-label">Terminal / PowerShell</span>
+            <div class="cmd"><code>npx loop-browser</code><button class="copy" data-copy="npx loop-browser" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
           </div>
-          <p class="note" style="margin-top:12px">Works on Mac &amp; Windows. Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> — a free tool; if you're not sure you have it, just use the download on the left.</p>
+          <div class="cmd-row">
+            <span class="cmd-label">In Claude Code</span>
+            <div class="cmd"><code>!npx loop-browser</code><button class="copy" data-copy="!npx loop-browser" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+          </div>
+          <p class="note" style="margin-top:14px">Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a>.</p>
         </div>
 
       </div>
@@ -509,12 +516,12 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     $p.textContent='↓ Download for Windows'; $p.href=FILES.win;
     $m.textContent='Windows 10/11 · 64-bit · .exe';
     $o.innerHTML='';
-    $n.innerHTML='First open: if Windows warns the maker is unknown (it\'s an early build), click <strong>More info → Run anyway</strong>. If it\'s blocked with no such option, use the <strong>one-command</strong> install instead.';
+    $n.innerHTML='First open: <strong>More info → Run anyway</strong> if Windows warns (early build).';
   } else if(os==='mac'){
     $p.textContent='↓ Download for macOS'; $p.href=FILES.mac;
     $m.textContent='macOS · Apple Silicon & Intel · .dmg';
     $o.innerHTML='';
-    $n.innerHTML='First open: macOS may say the maker is unknown (it\'s an early build). <strong>Right-click the app → Open</strong>, then Open again — it remembers after that.';
+    $n.innerHTML='First open: <strong>right-click → Open</strong> (early build).';
   } else if(os==='mobile'){
     $p.textContent='↓ Download'; $p.href='#'; $p.setAttribute('aria-disabled','true');
     $m.textContent='Desktop app · Mac & Windows';
@@ -536,14 +543,15 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
   $p.addEventListener('click',bumpDownload);
   $o.addEventListener('click',e=>{ if(e.target.closest('a')) bumpDownload(); });
 
-  // Copy buttons on command snippets — copy to clipboard + a brief "Copied!"
+  // Copy buttons on command snippets — copy to clipboard + a brief green check
+  const CHECK='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
   document.querySelectorAll('.cmd .copy').forEach(b=>{
+    const orig=b.innerHTML;
     b.addEventListener('click', async ()=>{
       try{ await navigator.clipboard.writeText(b.dataset.copy); }
       catch(_){ const r=document.createRange(); r.selectNode(b.previousElementSibling); const s=getSelection(); s.removeAllRanges(); s.addRange(r); try{document.execCommand('copy');}catch(__){} s.removeAllRanges(); }
-      b.classList.add('ok');
-      const tip=b.parentElement.querySelector('.copied'); if(tip) tip.classList.add('show');
-      setTimeout(()=>{ b.classList.remove('ok'); if(tip) tip.classList.remove('show'); }, 1600);
+      b.classList.add('ok'); b.innerHTML=CHECK;
+      setTimeout(()=>{ b.classList.remove('ok'); b.innerHTML=orig; }, 1500);
     });
   });
 </script>
