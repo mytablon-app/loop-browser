@@ -2,21 +2,80 @@
 // Every command reuses ONE tab and brings it to the front before acting.
 
 import { chromium } from "playwright-core";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync, cpSync, existsSync } from "fs";
+import { spawn } from "child_process";
+import { createRequire } from "module";
+import { fileURLToPath } from "url";
+import { homedir } from "os";
+import path from "path";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const CDP_URL = "http://localhost:9222";
+const APP_ROOT = fileURLToPath(new URL(".", import.meta.url)); // package root (has main.js)
+const require = createRequire(import.meta.url);
 
-export async function connect() {
-  for (let i = 0; i < 20; i++) {
+// Is Loop Browser already up on the local CDP port?
+export async function isBrowserUp() {
+  try {
+    const r = await fetch(CDP_URL + "/json/version");
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Launch Loop Browser DETACHED (background) — the caller returns immediately and
+// the app keeps running, so no terminal (or Claude Code session) gets stuck
+// attached to it. Quitting = close the window (no Ctrl+C needed).
+export function launchDetached() {
+  let electron;
+  try {
+    electron = require("electron"); // the Electron binary path
+  } catch {
+    throw new Error("Electron not found. Install with: npm i -g loop-browser");
+  }
+  const child = spawn(electron, [APP_ROOT], { detached: true, stdio: "ignore" });
+  child.unref();
+}
+
+// Make sure the browser is running; if not, start it in the background and wait
+// until CDP is ready. Returns true if we started it, false if it was already up.
+export async function ensureBrowser({ timeoutMs = 30000 } = {}) {
+  if (await isBrowserUp()) return false;
+  launchDetached();
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await sleep(400);
+    if (await isBrowserUp()) return true;
+  }
+  throw new Error("Loop Browser didn't come up in time. Try `loop start`.");
+}
+
+// Install the Loop skill into ~/.claude/skills/loop so Claude Code can drive Loop
+// Browser. Order-independent: works whether Claude Code is installed yet or not.
+export function installSkill() {
+  const src = path.join(APP_ROOT, "skill", "loop");
+  if (!existsSync(src)) return false;
+  const dest = path.join(homedir(), ".claude", "skills", "loop");
+  mkdirSync(dest, { recursive: true });
+  cpSync(src, dest, { recursive: true });
+  return dest;
+}
+
+// Connect to the running browser — auto-starting it (detached) if it isn't up.
+export async function connect({ autostart = true } = {}) {
+  if (autostart) {
+    try { await ensureBrowser(); } catch { /* fall through to the connect retries */ }
+  }
+  for (let i = 0; i < 30; i++) {
     try {
       return await chromium.connectOverCDP(CDP_URL);
     } catch {
       await sleep(400);
     }
   }
-  throw new Error("No browser running. Start it with:  npm run serve");
+  throw new Error("Could not reach Loop Browser on :9222. Try `loop start`.");
 }
 
 // REQUIREMENT 1 + 2: reuse the single real tab, never open new ones, keep it visible.

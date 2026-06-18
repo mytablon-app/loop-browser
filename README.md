@@ -26,16 +26,26 @@ It's **site-agnostic** — the engine doesn't know or care which website it's dr
 
 ## Quick start
 
-If you have Node, no download needed — run it straight from npm:
+One command sets everything up — installs the Claude Code skill and starts the browser:
 
 ```bash
-npx loop-browser          # launches the Loop Browser window (CDP on :9222); first run pulls Electron
+npx loop-browser setup
 ```
 
-Or install it as a command (puts `loop-browser` and the `loop` CLI on your PATH):
+Then you're done with the terminal — **just talk to Claude Code** ("scrape this group", "post this"). Claude starts/drives the browser for you; it runs in the **background** so nothing gets stuck attached to a terminal.
+
+Prefer the `loop` command on your PATH (so you can drive it by hand too)?
 
 ```bash
-npm i -g loop-browser
+npm i -g loop-browser && loop setup
+```
+
+Then any command auto-starts the browser if it isn't running:
+
+```bash
+loop start                 # just open the window (background, returns immediately)
+loop open https://example.com
+loop recipes
 ```
 
 > On Windows this also sidesteps Smart App Control, which blocks the unsigned `.exe` installer.

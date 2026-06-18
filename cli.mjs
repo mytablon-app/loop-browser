@@ -13,7 +13,7 @@
 //   loop recipes                    (list saved recipes)
 
 import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers } from "./lib.mjs";
+import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers, ensureBrowser, isBrowserUp, installSkill } from "./lib.mjs";
 
 const RECIPES_DIR = new URL("./recipes/", import.meta.url);
 const [cmd, ...rest] = process.argv.slice(2);
@@ -25,6 +25,30 @@ if (cmd === "recipes" || cmd === "flows") {
   for (const f of files) {
     const recipe = JSON.parse(readFileSync(new URL(f, RECIPES_DIR)));
     console.log(`  • ${recipe.name.padEnd(24)} ${recipe.title || recipe.description || ""}`);
+  }
+  process.exit(0);
+}
+
+// "loop setup" — install the Claude skill + start the browser (background). One-time.
+if (cmd === "setup") {
+  const dest = installSkill();
+  if (dest) console.log(`✓ Claude Code skill installed → ${dest}`);
+  process.stdout.write("· starting Loop Browser… ");
+  await ensureBrowser();
+  console.log("ready.");
+  console.log("✓ You're set up. Loop Browser runs in the background — now just talk to Claude Code.");
+  process.exit(0);
+}
+
+// "loop start" — start the browser in the BACKGROUND and return (keep working).
+if (cmd === "start" || cmd === "up") {
+  if (await isBrowserUp()) {
+    console.log("✓ Loop Browser is already running (listening on :9222).");
+  } else {
+    process.stdout.write("· starting Loop Browser… ");
+    await ensureBrowser();
+    console.log("ready.");
+    console.log("✓ Loop Browser is running in the background. Keep working — drive it with `loop …`.");
   }
   process.exit(0);
 }

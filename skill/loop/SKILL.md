@@ -13,8 +13,14 @@ description: >-
 
 Loop Browser is a real, **visible** glass browser you command from the terminal with the `loop`
 CLI. The window is Chromium and exposes a local CDP port; `loop` connects to it automatically
-(no port config — it's baked into the command). **The app must be running** (the user launches
-it). If a `loop` command errors with "No browser running", tell the user to open Loop Browser.
+(no port config). **You never launch it manually** — any `loop` command **auto-starts** Loop
+Browser in the background if it isn't already running, then drives it; it stays open afterward.
+So just run the command you need (e.g. `loop open …`) and the window appears. To start it
+explicitly without acting, use `loop start` (background, returns immediately).
+
+If the `loop` command itself isn't found, the user hasn't installed it — tell them to run
+`npm i -g loop-browser` then `loop setup` (installs this skill + starts the browser). That's the
+whole setup; after it, they just talk to you.
 
 ## The kitchen model (how to think about this)
 - **Recipe** = a saved recipe (`recipes/<name>.json`) — fixed steps targeting elements by role/label/text.
