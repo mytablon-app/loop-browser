@@ -26,6 +26,22 @@ It's **site-agnostic** — the engine doesn't know or care which website it's dr
 
 ## Quick start
 
+If you have Node, no download needed — run it straight from npm:
+
+```bash
+npx loop-browser          # launches the Loop Browser window (CDP on :9222); first run pulls Electron
+```
+
+Or install it as a command (puts `loop-browser` and the `loop` CLI on your PATH):
+
+```bash
+npm i -g loop-browser
+```
+
+> On Windows this also sidesteps Smart App Control, which blocks the unsigned `.exe` installer.
+
+Prefer the desktop app? Grab the installer at **[loop-browser.vercel.app](https://loop-browser.vercel.app)** (macOS `.dmg` / Windows `.exe`). Or clone and run from source:
+
 ```bash
 npm install        # downloads Electron; first run only
 npm start          # launches the Loop Browser window (CDP on :9222)
