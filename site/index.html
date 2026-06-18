@@ -450,8 +450,10 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
   document.querySelectorAll('.chapter').forEach(c=>io.observe(c));
 
   // OS-aware download: show the visitor's platform; offer the other as a fallback.
-  // TODO @deploy: point these at the hosted files (site/downloads/… or GitHub Release URLs).
-  const FILES={mac:'downloads/Loop-Browser-arm64.dmg', win:'downloads/Loop-Browser-Setup.exe'};
+  // Files are hosted as GitHub Release assets (stable "latest" URL — no edit needed per release).
+  // The asset names are fixed by electron-builder artifactName (Loop-Browser-mac.dmg / -win.exe).
+  const REL='https://github.com/mytablon-app/loop-browser/releases/latest/download';
+  const FILES={mac:REL+'/Loop-Browser-mac.dmg', win:REL+'/Loop-Browser-win.exe'};
   const ua=navigator.userAgent;
   // Mobile FIRST — iPadOS reports a Mac UA, so iPhone/iPad would otherwise be served a .dmg.
   const isMobile=/iPhone|iPad|iPod|Android/i.test(ua);
@@ -467,7 +469,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     $n.innerHTML='Unsigned build — on the SmartScreen prompt, click <strong>More info → Run anyway</strong>.';
   } else if(os==='mac'){
     $p.textContent='↓ Download for macOS'; $p.href=FILES.mac;
-    $m.textContent='macOS · Apple Silicon · .dmg';
+    $m.textContent='macOS · Apple Silicon & Intel · .dmg';
     $o.innerHTML='';
     $n.innerHTML='Unsigned build — right-click the app → <strong>Open</strong> on first launch.';
   } else if(os==='mobile'){

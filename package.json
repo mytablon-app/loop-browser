@@ -14,6 +14,7 @@
     "install-skill": "node scripts/install-skill.mjs",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
     "site": "node scripts/dev-server.mjs"
   },
   "build": {
@@ -43,7 +44,21 @@
         }
       ],
       "icon": "assets/loop.icns",
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "artifactName": "Loop-Browser-mac.${ext}"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/loop-dock-icon.png",
+      "artifactName": "Loop-Browser-win.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Loop Browser"
     }
   },
   "dependencies": {
