@@ -1,0 +1,15 @@
+# Belt-and-suspenders on top of the package.json "files" allowlist + the publish
+# guard (scripts/check-no-secrets.mjs). NEVER publish anything private:
+.loop-profile/
+dishes/
+*-members.csv
+runs/
+recipes/local/
+.env
+.env.*
+*.local.json
+.claude/
+build/
+site/
+.github/
+scripts/

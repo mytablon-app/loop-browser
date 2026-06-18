@@ -38,6 +38,7 @@
     "prestart": "node scripts/rebrand-electron.mjs",
     "start": "electron .",
     "cli": "node cli.mjs",
+    "prepublishOnly": "node scripts/check-no-secrets.mjs",
     "install-skill": "node scripts/install-skill.mjs",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --mac",
