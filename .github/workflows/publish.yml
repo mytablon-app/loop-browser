@@ -1,0 +1,28 @@
+name: Publish to npm
+
+# Publishes loop-browser to npm via Trusted Publishing (GitHub OIDC) — no token
+# stored anywhere. Fires when a version tag is pushed:
+#   npm version patch && git push --follow-tags
+#
+# One-time setup on npmjs.com: package → Settings → Trusted Publisher →
+# GitHub Actions → org=mytablon-app, repo=loop-browser, workflow=publish.yml
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write # required for Trusted Publishing + provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+      - run: npm install -g npm@latest # ensure trusted-publishing support
+      - run: npm publish --access public
