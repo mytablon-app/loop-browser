@@ -23,6 +23,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: "https://registry.npmjs.org"
-      - run: npm install -g npm@latest # ensure trusted-publishing support
+      # NOTE: no `registry-url` — it writes an .npmrc expecting NODE_AUTH_TOKEN,
+      # whose empty value breaks OIDC Trusted Publishing (E404). npm 11.5.1+ picks
+      # up the OIDC token automatically; just publish.
+      - run: npm install -g npm@latest # trusted-publishing support (needs 11.5.1+)
       - run: npm publish --access public
