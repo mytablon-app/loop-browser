@@ -1,12 +1,39 @@
 {
   "name": "loop-browser",
   "version": "0.0.1",
-  "private": true,
   "main": "main.js",
   "description": "Loop Browser — command the web from your CLI, and watch it happen",
-  "bin": {
-    "loop": "cli.mjs"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mytablon-app/loop-browser.git"
   },
+  "homepage": "https://loop-browser.vercel.app",
+  "keywords": [
+    "browser",
+    "automation",
+    "cli",
+    "electron",
+    "playwright",
+    "claude-code",
+    "web-automation",
+    "recipes"
+  ],
+  "bin": {
+    "loop": "cli.mjs",
+    "loop-browser": "bin/launch.mjs"
+  },
+  "files": [
+    "main.js",
+    "cli.mjs",
+    "lib.mjs",
+    "ui/",
+    "assets/",
+    "bin/",
+    "recipes/*.json",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "prestart": "node scripts/rebrand-electron.mjs",
     "start": "electron .",
@@ -64,6 +91,9 @@
   },
   "dependencies": {
     "playwright-core": "^1.61.0"
+  },
+  "peerDependencies": {
+    "electron": ">=33"
   },
   "devDependencies": {
     "electron": "^33.4.11",
