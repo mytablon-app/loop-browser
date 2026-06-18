@@ -26,15 +26,16 @@ LLM only shows up to *author* or *heal* a recipe.
 - `lib.mjs` — engine core: `connect`/`activePage`, `findInput`/`findClickable` (poll + deterministic self-heal), `runStep` primitives, `harvestMembers`, `captureIncident`/`captureAuthoringContext`.
 - `ui/` — `home.html`, `toolbar.html`, `preload.js` (the glass UI).
 - `recipes/` — saved recipes (`*.json`). `recipes/local/` = private (gitignored).
+- `bin/loop` — packaged-app CLI shim: runs the bundled `cli.mjs` via the app's own Electron (`ELECTRON_RUN_AS_NODE`), so a user needs neither system Node nor the repo. Symlinked into `/usr/local/bin` on first launch.
 - `skill/loop/SKILL.md` — Claude Code skill that teaches `loop`; `scripts/install-skill.mjs` drops it into `~/.claude/skills/`.
 - `site/` — static landing page (+ `api/downloads.js` = Vercel download counter).
 - `scripts/` — `rebrand-electron` (dev), `gen-icon`, `install-skill`, `dev-server` (serves site + live counter).
 
 ## Engine internals & gotchas (the CLI↔browser marriage)
 The CLI never talks to Electron directly — it speaks **CDP** to the browser's `localhost:9222` via Playwright's `connectOverCDP`. Several non-obvious wirings make this work; touch them carefully:
-- **`main.js:152` loads `about:blank` into the root window** *on purpose* — without it the root CDP target never initializes and `connectOverCDP` hangs/times out. Don't remove it.
+- **`main.js:346` loads `about:blank` into the root window** (`win.webContents.loadURL`) *on purpose* — without it the root CDP target never initializes and `connectOverCDP` hangs/times out. Don't remove it.
 - **`activePage()` (`lib.mjs`) deliberately skips `about:*` and `/ui/toolbar.html`** so the CLI drives the **content** WebContentsView, not the glass toolbar. The window is multi-view (toolbar view + one content view per tab); "the active page" = the visible content tab.
-- **`app.userAgentFallback` (`main.js:14`) is forced to a clean Chrome UA** (no Electron/app-name tokens) — UA-sniffing sites (WhatsApp Web, etc.) reject the default Electron UA with "update your browser." Keep it Chrome-shaped.
+- **`app.userAgentFallback` (`main.js:16`) is forced to a clean Chrome UA** (no Electron/app-name tokens) — UA-sniffing sites (WhatsApp Web, etc.) reject the default Electron UA with "update your browser." Keep it Chrome-shaped.
 - **Theme is owned by main and pushed into every view**, not stored in `file://` localStorage (which silently failed). New tabs inherit it via `loadFile(HOME, {query:{theme}})`; persisted to `loop-theme.json` in `userData`.
 - **`findInput`/`findClickable` poll then self-heal** (`healFind`): exact role/label first, then a deterministic fuzzy word-overlap match — this is the free "rung 1" recovery before any LLM is involved.
 - **No test suite.** Verification = run a recipe live against the running app (`npm start` first) and watch it. There is no lint/build-check step; `node cli.mjs <verb>` is the smoke test.
