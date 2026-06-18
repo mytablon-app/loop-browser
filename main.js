@@ -83,8 +83,19 @@ function setTheme(next) {
   broadcastTheme();
 }
 
+// Re-point the page's native dialogs at the bridged (working) ones — runs in the
+// page's main world on every load, since each navigation resets window.confirm.
+const PATCH_DIALOGS = `(()=>{const d=window.__loopDialogs;if(!d)return;
+  window.alert=(m)=>{d.alert(m);};
+  window.confirm=(m)=>!!d.confirm(m);
+  window.prompt=(m,v)=>d.prompt(m,v);})();`;
+
 function newTab(url) {
-  const view = new WebContentsView();
+  const view = new WebContentsView({
+    // content-preload bridges window.confirm/alert/prompt to the main process
+    // (a WebContentsView has no owner window for Electron's native dialogs).
+    webPreferences: { preload: path.join(__dirname, "ui", "content-preload.js") },
+  });
   // Real web pages assume a WHITE default background (CSS default). Our dark theme
   // color is only right for the local home tab — using it for websites makes any
   // unpainted region bleed dark navy through the page (LinkedIn's hero, etc.).
@@ -110,6 +121,7 @@ function newTab(url) {
   };
   wc.on("did-start-loading", () => loading(true));
   wc.on("did-stop-loading", () => loading(false));
+  wc.on("dom-ready", () => wc.executeJavaScript(PATCH_DIALOGS, true).catch(() => {}));
   wc.setWindowOpenHandler(({ url: u }) => {
     newTab(u && u !== "about:blank" ? u : undefined); // popups → new tab
     return { action: "deny" };
@@ -416,6 +428,32 @@ ipcMain.on("tab", (_e, action, id) => {
 });
 
 ipcMain.on("theme", () => setTheme());
+
+// Native JS dialogs for content tabs (bridged from content-preload.js, since a
+// WebContentsView has no owner window for Electron's built-in dialogs). Shown
+// attached to the root window; sync so window.confirm/alert/prompt block as usual.
+ipcMain.on("loop-dialog", (event, opts) => {
+  const { type, message } = opts || {};
+  try {
+    if (type === "confirm") {
+      const r = dialog.showMessageBoxSync(win, {
+        type: "question", message: String(message || ""),
+        buttons: ["Cancel", "OK"], defaultId: 1, cancelId: 0, noLink: true,
+      });
+      event.returnValue = r === 1;
+    } else if (type === "alert") {
+      dialog.showMessageBoxSync(win, {
+        type: "info", message: String(message || ""), buttons: ["OK"], defaultId: 0, noLink: true,
+      });
+      event.returnValue = undefined;
+    } else {
+      // prompt(): Electron has no native text-input dialog — return null (cancel).
+      event.returnValue = null;
+    }
+  } catch {
+    event.returnValue = type === "confirm" ? false : null;
+  }
+});
 
 app.whenReady().then(() => {
   try { theme = JSON.parse(fs.readFileSync(themeFile(), "utf8")).theme || "dark"; } catch {}
