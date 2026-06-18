@@ -230,24 +230,43 @@ function tryReveal() {
 // PATH line to their shell rc, pointing at the bundled launcher = Electron-as-Node,
 // so no separate Node/repo is needed). They stay fully in control.
 function maybeInstallCli() {
-  if (!app.isPackaged || process.platform !== "darwin") return; // dev uses `npm link`
+  if (!app.isPackaged) return; // dev uses `npm link`
+  if (process.platform !== "darwin" && process.platform !== "win32") return;
   const flag = path.join(app.getPath("userData"), ".loop-cli-asked");
   try { if (fs.existsSync(flag)) return; } catch {}
+  // The bundled launcher dir lives at resources/app/bin on BOTH platforms
+  // (POSIX `loop` shim on macOS, `loop.cmd` on Windows — both run cli.mjs via
+  // the app's own Electron-as-Node, so no separate Node/repo is needed).
   const bin = path.join(process.resourcesPath, "app", "bin");
-  const shell = process.env.SHELL || "/bin/zsh";
-  const rc = shell.includes("zsh") ? "~/.zshrc" : shell.includes("bash") ? "~/.bash_profile" : "~/.profile";
-  const cmd = `echo 'export PATH="$PATH:${bin}"' >> ${rc}`;
+  let cmd, detail;
+  if (process.platform === "win32") {
+    // Append the bin dir to the USER PATH (no admin, persistent, no setx truncation).
+    // `loop` then resolves to loop.cmd via PATHEXT. User opens a new terminal after.
+    cmd =
+      `powershell -NoProfile -Command "[Environment]::SetEnvironmentVariable('Path', ` +
+      `[Environment]::GetEnvironmentVariable('Path','User') + ';${bin}', 'User')"`;
+    detail =
+      "Loop Browser is ready. To run automations from any terminal (loop run …), " +
+      "add the loop command to your PATH — paste this into PowerShell once, then open a new window:\n\n" +
+      cmd +
+      "\n\nNo admin needed and nothing changes automatically — you run it yourself.";
+  } else {
+    const shell = process.env.SHELL || "/bin/zsh";
+    const rc = shell.includes("zsh") ? "~/.zshrc" : shell.includes("bash") ? "~/.bash_profile" : "~/.profile";
+    cmd = `echo 'export PATH="$PATH:${bin}"' >> ${rc}`;
+    detail =
+      "Loop Browser is ready. To run automations from any terminal (loop run …), " +
+      "add the loop command to your shell — paste this into Terminal once, then open a new tab:\n\n" +
+      cmd +
+      "\n\nNo password needed and nothing changes automatically — you run it yourself.";
+  }
   dialog.showMessageBox({
     type: "info",
     buttons: ["Copy command", "Maybe later"],
     defaultId: 0, cancelId: 1,
     title: "Loop Browser",
     message: "Use “loop” in your terminal",
-    detail:
-      "Loop Browser is ready. To run automations from any terminal (loop run …), " +
-      "add the loop command to your shell — paste this into Terminal once, then open a new tab:\n\n" +
-      cmd +
-      "\n\nNo password needed and nothing changes automatically — you run it yourself.",
+    detail,
   }).then(({ response }) => {
     try { fs.writeFileSync(flag, "1"); } catch {} // ask only once, whatever they pick
     if (response === 0) { try { clipboard.writeText(cmd); } catch {} }

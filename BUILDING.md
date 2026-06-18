@@ -31,21 +31,18 @@ npm run dist:win      # → build/dist/Loop-Browser-win.exe  (NSIS installer, x6
 ```
 Unsigned beta — on the SmartScreen prompt, click **More info → Run anyway**.
 
-### ⚠️ Known gap the Windows build must close: the `loop` CLI
-The whole product is the `loop` command. On macOS the app installs it on first launch
-(`maybeInstallCli()` in `main.js:233`) by symlinking the bundled `bin/loop` shim into
-`/usr/local/bin`. **That path early-returns on non-darwin (`process.platform !== "darwin"`),
-and `bin/loop` is a POSIX shell script.** So the Windows `.exe` currently installs and runs the
-*browser*, but does **not** put `loop` on the user's PATH.
+### The `loop` CLI on Windows
+The whole product is the `loop` command, and the Windows build ships it too:
+1. **`bin/loop.cmd`** — the Windows shim. Runs the bundled CLI via the app's own Electron-as-Node
+   (`ELECTRON_RUN_AS_NODE=1 "<install>\Loop Browser.exe" cli.mjs %*`), so the user needs neither a
+   separate Node install nor the repo. Mirrors the POSIX `bin/loop`. Bundled via `build.files` (`bin/**/*`).
+2. **`maybeInstallCli()` (`main.js`)** now has a Windows branch: on first launch it offers a one-line
+   PowerShell command that appends the bundled `…\resources\app\bin` dir to the **user** PATH (no admin,
+   persistent, no `setx` truncation). `loop` then resolves to `loop.cmd` via `PATHEXT`. As on macOS,
+   nothing changes automatically — the user runs the copied command, then opens a new terminal.
 
-To ship a usable Windows build, add a Windows equivalent:
-1. A `bin/loop.cmd` that runs the bundled CLI via the app's Electron-as-Node
-   (`ELECTRON_RUN_AS_NODE=1 "<app>\Loop Browser.exe" cli.mjs %*`) — mirror what `bin/loop` does on macOS.
-2. A Windows branch in `maybeInstallCli()` that adds that shim to the user's PATH (or drops it in a
-   dir already on PATH), instead of the `/usr/local/bin` symlink.
-
-Until that's in, verify the `.exe` at least launches the browser and CDP (`localhost:9222`), then
-treat CLI-on-PATH as the follow-up before calling Windows "shipped" to end users.
+Verify the `.exe` launches the browser + CDP (`localhost:9222`), then in a fresh terminal confirm
+`loop recipes` and a live `loop run …` against the running app.
 
 ## Cutting a Release (host the assets)
 1. Create a GitHub Release (tag e.g. `v0.0.1`), **not** a draft/prerelease (so `latest` resolves).

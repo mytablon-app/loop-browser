@@ -26,7 +26,7 @@ LLM only shows up to *author* or *heal* a recipe.
 - `lib.mjs` — engine core: `connect`/`activePage`, `findInput`/`findClickable` (poll + deterministic self-heal), `runStep` primitives, `harvestMembers`, `captureIncident`/`captureAuthoringContext`.
 - `ui/` — `home.html`, `toolbar.html`, `preload.js` (the glass UI).
 - `recipes/` — saved recipes (`*.json`). `recipes/local/` = private (gitignored).
-- `bin/loop` — packaged-app CLI shim: runs the bundled `cli.mjs` via the app's own Electron (`ELECTRON_RUN_AS_NODE`), so a user needs neither system Node nor the repo. Symlinked into `/usr/local/bin` on first launch.
+- `bin/loop` (macOS/POSIX) + `bin/loop.cmd` (Windows) — packaged-app CLI shim: runs the bundled `cli.mjs` via the app's own Electron (`ELECTRON_RUN_AS_NODE`), so a user needs neither system Node nor the repo. First launch (`maybeInstallCli()`) offers to add it to PATH — symlink into `/usr/local/bin` on macOS; append `…\resources\app\bin` to the user PATH on Windows.
 - `skill/loop/SKILL.md` — Claude Code skill that teaches `loop`; `scripts/install-skill.mjs` drops it into `~/.claude/skills/`.
 - `site/` — static landing page (+ `api/downloads.js` = Vercel download counter).
 - `scripts/` — `rebrand-electron` (dev), `gen-icon`, `install-skill`, `dev-server` (serves site + live counter).
