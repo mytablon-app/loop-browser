@@ -15,6 +15,7 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder --mac",
     "dist:win": "electron-builder --win",
+    "dist:win:signed": "electron-builder --win --config electron-builder.signing.js",
     "site": "node scripts/dev-server.mjs"
   },
   "build": {

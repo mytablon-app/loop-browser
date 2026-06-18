@@ -29,7 +29,13 @@ cd loop-browser
 npm install
 npm run dist:win      # → build/dist/Loop-Browser-win.exe  (NSIS installer, x64)
 ```
-Unsigned beta — on the SmartScreen prompt, click **More info → Run anyway**.
+Unsigned beta — on the **SmartScreen** prompt, click **More info → Run anyway**.
+
+> ⚠️ **Smart App Control (SAC) blocks unsigned apps with NO override** (no "Run anyway" — just
+> "Okay" / "Get apps from the Store"). SAC is on by default on some fresh Windows 11 clean installs.
+> Turning SAC off is **irreversible** (needs a Windows reinstall to re-enable) — don't do that to test.
+> The real fix is code-signing: see **SIGNING.md** (Azure Trusted Signing). To test an unsigned build,
+> use a Windows machine/VM that doesn't have SAC enabled.
 
 ### The `loop` CLI on Windows
 The whole product is the `loop` command, and the Windows build ships it too:
