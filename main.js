@@ -85,12 +85,21 @@ function setTheme(next) {
 
 function newTab(url) {
   const view = new WebContentsView();
-  view.setBackgroundColor(theme === "light" ? LIGHT : DARK);
+  // Real web pages assume a WHITE default background (CSS default). Our dark theme
+  // color is only right for the local home tab — using it for websites makes any
+  // unpainted region bleed dark navy through the page (LinkedIn's hero, etc.).
+  const homeBg = () => (theme === "light" ? LIGHT : DARK);
+  view.setBackgroundColor(url ? "#ffffff" : homeBg());
   const id = nextId++;
   tabs.push({ id, view });
   win.contentView.addChildView(view);
   const wc = view.webContents;
   url ? wc.loadURL(url) : wc.loadFile(HOME, { query: { theme } }); // new tab inherits theme
+  // Keep the base background matched to what's loading: white for web pages,
+  // theme color for our own home tab (so it doesn't bleed dark through sites).
+  wc.on("did-start-navigation", (_e, navUrl, _ip, isMain) => {
+    if (isMain) view.setBackgroundColor(navUrl.includes("ui/home.html") ? homeBg() : "#ffffff");
+  });
   wc.on("did-navigate", sendTabs);
   wc.on("did-navigate-in-page", sendState);
   wc.on("page-title-updated", sendTabs);
