@@ -13,6 +13,36 @@ Loop Browser ships as a desktop app per OS, hosted on **GitHub Releases**. The w
 > uploaded assets** — the site URL is `…/releases/latest/download/Loop-Browser-mac.dmg` (and `-win.exe`).
 > A binary must never be committed to git (`build/` is gitignored) — it only lives on the Release.
 
+## Run from the repo (dev / quick test — no installer, no SAC)
+If you've cloned the repo, you don't need to build or install anything to **run** Loop Browser —
+just launch it in dev mode. This is also the cleanest way to test on a Windows machine where
+**Smart App Control blocks the packaged `.exe`**: `npm start` runs the `electron` binary from
+`node_modules` (extracted locally, no "Mark of the Web"), which SAC generally lets through.
+
+```sh
+npm install        # once
+npm start          # launches the app; exposes CDP on localhost:9222
+# in another terminal, drive it:
+node cli.mjs recipes          # list recipes
+node cli.mjs run hn-top       # a live run against the running app
+#   (or `npm link` once, then use `loop …` directly)
+```
+
+**Or just ask Claude Code** (the intended workflow — Loop Browser is a browser you command via the
+CLI). In a Claude Code session opened in this repo:
+
+```
+Start Loop Browser from this repo and verify it works:
+1. Run `npm start` in the background and wait until the app window is up (CDP on localhost:9222).
+2. Run `node cli.mjs recipes` — confirm it lists the recipes.
+3. Run `node cli.mjs run hn-top` — watch it drive the browser and write the dish.
+```
+
+> Caveat: dev-run exercises the app + engine + CLI, but **not** the packaged installer's PATH wiring
+> (`maybeInstallCli()` only fires when `app.isPackaged`). To runtime-prove the `loop.cmd` + PATH shim,
+> install a packaged build on a non-SAC machine. Dev-run is a *testing/usage* path, not a *distribution*
+> one — end users get the `.exe`, not "clone + install Node".
+
 ## macOS build (on a Mac)
 ```sh
 npm install
