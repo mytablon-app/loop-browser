@@ -43,7 +43,7 @@ html[data-theme="light"]{
   --shadow:0 30px 70px -34px rgba(30,50,90,.35);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;overflow-x:hidden;max-width:100%}
 body{
   font-family:var(--body); background:var(--ink); color:var(--text);
   line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden;
@@ -90,7 +90,7 @@ nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px);-webkit-backdrop
 
 /* hero */
 header{position:relative;text-align:center;min-height:calc(100svh - 62px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 0 28px}
-.orbit{position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:760px;max-width:120vw;aspect-ratio:1;z-index:-1;opacity:.55}
+.orbit{position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:760px;max-width:100vw;aspect-ratio:1;z-index:-1;opacity:.55;pointer-events:none}
 .orbit i{position:absolute;inset:0;margin:auto;border:1px solid var(--border);border-radius:50%}
 .orbit i:nth-child(1){width:300px;height:300px}
 .orbit i:nth-child(2){width:480px;height:480px;border-style:dashed;animation:spin 60s linear infinite}
@@ -255,8 +255,8 @@ html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 90%,transpar
 .copied.show{opacity:1}
 .cmd-row{margin-top:16px}
 .cmd-label{display:block;font-size:.78rem;color:var(--faint);margin-bottom:7px}
-.cmd{width:100%}
-.cmd code{flex:1}
+.cmd{width:100%;max-width:100%;overflow-x:auto}
+.cmd code{flex:1;min-width:0}
 
 footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 .foot{display:flex;align-items:center;gap:16px;flex-wrap:wrap;color:var(--faint);font-size:.88rem}
@@ -523,10 +523,9 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     $o.innerHTML='';
     $n.innerHTML='First open: <strong>right-click → Open</strong> (early build).';
   } else if(os==='mobile'){
-    $p.textContent='↓ Download'; $p.href='#'; $p.setAttribute('aria-disabled','true');
-    $m.textContent='Desktop app · Mac & Windows';
-    $o.innerHTML='Loop is a desktop app — open this page on your <strong>Mac</strong> or <strong>Windows PC</strong> to download.';
-    $n.textContent='';
+    // No download/terminal on a phone — replace both install cards with a note.
+    const grid=document.querySelector('.get-grid');
+    if(grid) grid.innerHTML='<p class="sub center" style="grid-column:1/-1;margin:0">Loop Browser is a <b>desktop tool</b> — open this page on your <b>Mac</b> or <b>Windows</b> computer to set it up. (It needs a real browser window and a terminal, which phones don\'t have.)</p>';
   } else {
     $p.textContent='↓ Download'; $p.href='#';
     $m.textContent='Mac &amp; Windows';
