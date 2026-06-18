@@ -9,7 +9,22 @@ const { execFile } = require("child_process");
 const net = require("net");
 
 app.setName("Loop Browser");
-app.commandLine.appendSwitch("remote-debugging-port", "9222"); // CLI↔browser marriage
+
+// Single instance only. A second launch (e.g. `npx loop-browser` while the app is
+// already open) would collide on CDP :9222 ("bind() failed: Address already in
+// use") and fail to start its control server. So: only the lock-holder claims
+// :9222; a losing instance never attempts the bind — it just focuses the running
+// window and quits.
+const gotInstanceLock = app.requestSingleInstanceLock();
+if (!gotInstanceLock) {
+  app.quit();
+} else {
+  app.commandLine.appendSwitch("remote-debugging-port", "9222"); // CLI↔browser marriage
+  app.on("second-instance", () => {
+    const w = win && !win.isDestroyed() ? win : BrowserWindow.getAllWindows()[0];
+    if (w) { if (w.isMinimized()) w.restore(); w.show(); w.focus(); }
+  });
+}
 
 // Identify as plain Chrome. Electron's default UA includes "Electron/…" + the app
 // name, which UA-sniffing sites (WhatsApp, etc.) reject. We ARE Chromium — say so.
@@ -455,7 +470,7 @@ ipcMain.on("loop-dialog", (event, opts) => {
   }
 });
 
-app.whenReady().then(() => {
+if (gotInstanceLock) app.whenReady().then(() => {
   try { theme = JSON.parse(fs.readFileSync(themeFile(), "utf8")).theme || "dark"; } catch {}
   if (process.platform === "darwin") {
     const ic = nativeImage.createFromPath(ICON);
