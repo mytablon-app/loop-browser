@@ -1,6 +1,6 @@
 {
   "name": "loop-browser",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "main.js",
   "description": "Loop Browser — command the web from your CLI, and watch it happen",
   "license": "MIT",
