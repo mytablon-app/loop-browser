@@ -39,8 +39,8 @@ if (cmd === "privacy" || cmd === "data") {
   const items = [
     { k: "🔑 Login & sessions (the key)", dir: profileDir(), note: "cookies/sessions for sites you're signed into — only you ever see them" },
     { k: "🍽️  Dishes (your output)", dir: path.join(process.cwd(), "dishes"), note: "cooked results (CSVs, etc.) — gitignored, never shared" },
-    { k: "📸 Runs (screenshots)", dir: path.join(pkg, "runs"), note: "failure screenshots + incident reports" },
     { k: "📋 Private recipes", dir: path.join(pkg, "recipes", "local"), note: "recipes you keep to yourself — never published" },
+    { k: "🩺 Diagnostics (fallback only)", dir: path.join(pkg, "runs"), note: "screenshots/incident reports — created only when a run BREAKS or you use the vision fallback (loop shot)" },
   ];
   console.log("\n" + b("🔒 Loop Browser — Privacy"));
   console.log(dim("   Everything below lives ONLY on this machine. Loop never uploads it.\n"));
