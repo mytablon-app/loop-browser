@@ -2,7 +2,7 @@
 // Every command reuses ONE tab and brings it to the front before acting.
 
 import { chromium } from "playwright-core";
-import { mkdirSync, writeFileSync, cpSync, existsSync } from "fs";
+import { mkdirSync, writeFileSync, cpSync, existsSync, statSync, readdirSync } from "fs";
 import { spawn } from "child_process";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
@@ -51,6 +51,37 @@ export async function ensureBrowser({ timeoutMs = 30000 } = {}) {
   }
   throw new Error("Loop Browser didn't come up in time. Try `loop start`.");
 }
+
+// Where Electron stores this app's data (logins/cookies = "the key"), per OS.
+export function profileDir() {
+  const name = "Loop Browser";
+  if (process.platform === "darwin") return path.join(homedir(), "Library", "Application Support", name);
+  if (process.platform === "win32") return path.join(process.env.APPDATA || path.join(homedir(), "AppData", "Roaming"), name);
+  return path.join(process.env.XDG_CONFIG_HOME || path.join(homedir(), ".config"), name);
+}
+
+// Bounded recursive summary of a directory: { exists, files, bytes } (caps the
+// walk so a big browser cache can't hang the privacy panel).
+export function dirInfo(dir, { cap = 8000 } = {}) {
+  if (!existsSync(dir)) return { exists: false, files: 0, bytes: 0, capped: false };
+  let files = 0, bytes = 0, capped = false;
+  const walk = (d) => {
+    if (files >= cap) { capped = true; return; }
+    let entries;
+    try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (files >= cap) { capped = true; return; }
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else { files++; try { bytes += statSync(p).size; } catch {} }
+    }
+  };
+  walk(dir);
+  return { exists: true, files, bytes, capped };
+}
+
+export const fmtBytes = (n) =>
+  n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`;
 
 // Install the Loop skill into ~/.claude/skills/loop so Claude Code can drive Loop
 // Browser. Order-independent: works whether Claude Code is installed yet or not.

@@ -42,6 +42,7 @@ whole setup; after it, they just talk to you.
   NOT in the accessibility tree (canvas, image-only buttons): look at the PNG, read coords, then…
 - `loop click-xy <x> <y>` — click at coordinates (the vision fallback action).
 - `loop recipes` — list saved recipes.
+- `loop privacy` — show what Loop stores locally (login profile, dishes, runs, private recipes) + the no-upload guarantee. Use when the user asks "what data do you keep?" / "is my data safe?".
 - `loop run <recipe> key=value …` — run a saved recipe with ingredients. Deterministic, no LLM.
 - `loop author <name> "<goal>"` — capture an authoring brief (`runs/<name>-authoring.json`: the page's
   accessibility snapshot + goal) and scaffold `recipes/<name>.json`. THEN you write the steps (see below).

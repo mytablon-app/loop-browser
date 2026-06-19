@@ -13,7 +13,9 @@
 //   loop recipes                    (list saved recipes)
 
 import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers, ensureBrowser, isBrowserUp, installSkill } from "./lib.mjs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers, ensureBrowser, isBrowserUp, installSkill, profileDir, dirInfo, fmtBytes } from "./lib.mjs";
 
 const RECIPES_DIR = new URL("./recipes/", import.meta.url);
 const [cmd, ...rest] = process.argv.slice(2);
@@ -26,6 +28,36 @@ if (cmd === "recipes" || cmd === "flows") {
     const recipe = JSON.parse(readFileSync(new URL(f, RECIPES_DIR)));
     console.log(`  • ${recipe.name.padEnd(24)} ${recipe.title || recipe.description || ""}`);
   }
+  process.exit(0);
+}
+
+// "loop privacy" — show exactly what Loop stores locally + the no-upload guarantee.
+if (cmd === "privacy" || cmd === "data") {
+  const e = (n, s) => `\x1b[${n}m${s}\x1b[0m`;
+  const dim = (s) => e(2, s), b = (s) => e(1, s), grn = (s) => e(32, s), cyn = (s) => e(36, s);
+  const pkg = fileURLToPath(new URL(".", import.meta.url));
+  const items = [
+    { k: "🔑 Login & sessions (the key)", dir: profileDir(), note: "cookies/sessions for sites you're signed into — only you ever see them" },
+    { k: "🍽️  Dishes (your output)", dir: path.join(process.cwd(), "dishes"), note: "cooked results (CSVs, etc.) — gitignored, never shared" },
+    { k: "📸 Runs (screenshots)", dir: path.join(pkg, "runs"), note: "failure screenshots + incident reports" },
+    { k: "📋 Private recipes", dir: path.join(pkg, "recipes", "local"), note: "recipes you keep to yourself — never published" },
+  ];
+  console.log("\n" + b("🔒 Loop Browser — Privacy"));
+  console.log(dim("   Everything below lives ONLY on this machine. Loop never uploads it.\n"));
+  for (const it of items) {
+    const info = dirInfo(it.dir);
+    const status = info.exists
+      ? grn(`${info.files}${info.capped ? "+" : ""} file${info.files === 1 ? "" : "s"} · ${fmtBytes(info.bytes)}`)
+      : dim("none yet");
+    console.log(`   ${b(it.k)}   ${status}`);
+    console.log(`     ${dim(it.dir)}`);
+    console.log(`     ${dim("└ " + it.note)}`);
+  }
+  console.log("\n   " + b("Network"));
+  console.log(dim("     • Only localhost:9222 (CLI ↔ your browser) and the sites YOU drive,"));
+  console.log(dim("       inside YOUR logged-in session."));
+  console.log(dim("     • No telemetry · no accounts · no cloud · nothing phones home.\n"));
+  console.log(cyn("   The recipe travels; the meal, the pantry, and the key stay home.") + "\n");
   process.exit(0);
 }
 
@@ -172,7 +204,8 @@ try {
     default:
       console.log(
         "commands: open <url> | fill <label> <text> | click <text> | press <key> | read | snapshot\n" +
-          "          run <recipe> key=value ... | recipes | author <name> \"<goal>\""
+          "          run <recipe> key=value ... | recipes | author <name> \"<goal>\"\n" +
+          "          setup | start | privacy"
       );
   }
   if (!process.exitCode) console.log("✓ done — look at the window.");
