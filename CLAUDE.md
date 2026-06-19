@@ -44,7 +44,8 @@ The CLI never talks to Electron directly — it speaks **CDP** to the browser's 
 `loop open <url>` · `fill "<label>" "<text>"` · `click "<text>"` · `press <Key>` · `read` · `snapshot`
 (page as role/name tree — the brain's eyes) · `shot [name]` (screenshot for vision fallback) ·
 `click-xy <x> <y>` (vision fallback click) · `author <name> "<goal>"` · `scrape-members "<group>"` ·
-`run <recipe> key=value …` · `recipes` (list). The app must be running; `loop` finds it on the fixed local port.
+`run <recipe> key=value …` · `recipes` (list) · `setup` (install Claude skill + start) · `start` (background launch) · `privacy` (show local data + no-upload guarantee).
+**Auto-launch (important):** any `loop` command now **auto-starts Loop Browser in the background** (detached) if it isn't running — `connect()` in `lib.mjs` calls `ensureBrowser()`. So you DON'T need `npm start` first; just run the command. `loop start` launches without acting and returns immediately (no stuck terminal, no Ctrl+C — quit by closing the window).
 
 ## Recipe format
 ```json
@@ -63,6 +64,7 @@ Step verbs: `open · fill · click · press · wait · assert · read · snapsho
 ## The git boundary (CRITICAL)
 - **Ships:** engine (`main/cli/lib/ui`), `recipes/` (method only — placeholder ingredients, **no personal data**), `skill/`, `site/`, docs.
 - **Never ships (gitignored):** `.loop-profile/` (login = the key), `dishes/` + `*-members.csv` (output), `runs/` (screenshots), `.claude/`, the DMG/EXE. *The recipe travels; the meal, the pantry, and the key stay home.* `grep` for personal data before committing.
+- **HARD RULE — no secret/private data ever ships to git, npm, or the website** (passwords, tokens, keys, sessions, private recipes). Enforced by 4 layers; **never weaken them:** `.gitignore` → npm `files` allowlist (`recipes/*.json` — NEVER `recipes/`, which would sweep in `recipes/local/`) → `.npmignore` → **the publish guard `scripts/check-no-secrets.mjs`** (`prepublishOnly`, gates manual `npm publish` AND CI; aborts if any secret/private file would ship). A real leak was caught here once — keep all four intact.
 
 ## Hard rules
 - **Only the human logs in** — never type credentials. If logged out, stop and ask.
@@ -70,10 +72,15 @@ Step verbs: `open · fill · click · press · wait · assert · read · snapsho
 - **Human-like & watchable:** deliberate pacing; run/train the cook **one step at a time, observing each** — never blast batches or reopen the app in a loop.
 
 ## Run / dev
-- `npm start` — launch Loop Browser (CDP :9222). Required for `loop` to connect.
+- `npm start` — launch Loop Browser (CDP :9222). (Not strictly needed anymore — `loop` auto-launches it — but still the dev way to run the app.)
 - `node cli.mjs <args>` (or `loop …` after `npm link`).
 - `npm run site` — serve the landing site **with a working download counter** at :8099.
-- `npm run dist` — build the macOS DMG. **Bundles a self-contained `loop` CLI** (cli/lib/recipes + `playwright-core`, run via the app's Electron-as-Node — no system Node/repo needed); first launch offers to symlink `loop` into `/usr/local/bin`. `npm run install-skill` — install the Loop skill.
+- `npm run dist` / `dist:win` — build the macOS DMG / Windows EXE (`dist:win:signed` = Azure Trusted Signing, see `SIGNING.md`).
+
+## Distribution (SHIPPED — published on npm)
+- **`loop-browser` is published on npm.** Headline install = **`npx loop-browser setup`** (installs the Claude skill + starts the browser) — then the user just talks to Claude. `npm i -g loop-browser` puts `loop`/`loop-browser` on PATH. `npx loop-browser` = background launch. This is the no-installer path (also dodges Windows SmartScreen/SAC). See `README.md`.
+- **`electron` is in `peerDependencies` (+ devDeps)** — electron-builder forbids it in `dependencies`, but npm 7+ auto-installs the peer for npx consumers. Don't move it to `dependencies` (breaks the installer build).
+- **Publishing:** a Trusted-Publishing CI workflow exists (`.github/workflows/publish.yml`, tag-triggered) BUT it's currently failing — GitHub isn't granting the workflow `id-token: write` (an account/org Actions setting). Until that's fixed, releases are **manual**: bump version, then `npm publish` with a granular bypass-2FA token created+revoked via LB (account has no 2FA). The `prepublishOnly` guard runs either way.
 
 ## Product direction (planned, not built)
 Closed/proprietary app (sealed engine via Electron fuses + signing) but **unlimited usage** (any site/dish, no throttle); cross-platform (mac DMG + win EXE from one codebase via CI); a **recipe ecosystem** (official + user-authored, shareable because recipes are method-only).
