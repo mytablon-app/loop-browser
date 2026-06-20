@@ -216,6 +216,9 @@ function closeTab(id) {
   if (i < 0) return;
   const [t] = tabs.splice(i, 1);
   win.contentView.removeChildView(t.view);
+  // Detaching the view is not enough — the webContents lives on as an invisible
+  // "hidden shell" (leaks memory + can confuse the CLI's activePage). Destroy it.
+  try { t.view.webContents.close(); } catch (_) {}
   if (!tabs.length) return newTab();
   if (activeId === id) activate(tabs[Math.max(0, i - 1)].id);
   else sendTabs();
