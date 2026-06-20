@@ -133,7 +133,8 @@ function newTab(url) {
   wc.on("did-navigate", sendTabs);
   wc.on("did-navigate-in-page", sendState);
   wc.on("page-title-updated", sendTabs);
-  wc.on("did-finish-load", () => { sendTabs(); if (isHome(wc)) applyTheme(wc); homeReady = true; tryReveal(); });
+  wc.on("did-finish-load", () => { sendTabs(); if (isHome(wc)) applyTheme(wc); homeReady = true; tryReveal();
+    wc.executeJavaScript(`window.__loopActiveTab=${id === activeId}`, true).catch(() => {}); });
   const loading = (v) => {
     if (id === activeId && toolbar && !toolbar.webContents.isDestroyed())
       toolbar.webContents.send("loading", v);
@@ -164,8 +165,12 @@ function activate(id) {
   activeId = id;
   for (const t of tabs) {
     try {
-      if (t.view && t.view.webContents && !t.view.webContents.isDestroyed())
+      if (t.view && t.view.webContents && !t.view.webContents.isDestroyed()) {
         t.view.setVisible(t.id === id);
+        // Mark the active tab so the CLI (activePage) drives the tab you're looking
+        // at, not just the first one — lets you keep several sites open at once.
+        t.view.webContents.executeJavaScript(`window.__loopActiveTab=${t.id === id}`, true).catch(() => {});
+      }
     } catch (_) {}
   }
   win.contentView.addChildView(toolbar); // keep toolbar on top

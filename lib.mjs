@@ -119,13 +119,20 @@ export async function activePage(browser) {
   // and they pile up (the "6 hidden shells" bug). main.js always keeps ≥1 real tab,
   // so a content page should always exist; if it doesn't, stop loudly rather than
   // birth something the human can't see or click.
-  const page = pages.find(
+  const content = pages.filter(
     (p) => !p.url().startsWith("about:") && !p.url().includes("/ui/toolbar.html")
   );
-  if (!page) {
+  if (!content.length) {
     throw new Error(
       "No visible content tab to drive. Open a page in Loop Browser (a real, clickable tab) and retry — the CLI never creates hidden pages."
     );
+  }
+  // Drive the tab you're LOOKING AT: main.js flags the active tab with
+  // window.__loopActiveTab. So you can keep LinkedIn, WhatsApp, etc. open at once
+  // and `loop` acts on the front one. Fall back to the first tab (single-tab case).
+  let page = content[0];
+  for (const p of content) {
+    try { if (await p.evaluate(() => window.__loopActiveTab === true)) { page = p; break; } } catch (_) {}
   }
   await page.bringToFront();
   // Native JS dialogs otherwise deadlock the page. The one we hit in practice is
@@ -138,7 +145,7 @@ export async function activePage(browser) {
       (d.type() === "beforeunload" ? d.accept() : d.dismiss()).catch(() => {})
     );
   }
-  return { page, tabCount: pages.length };
+  return { page, tabCount: pages.length, contentCount: content.length };
 }
 
 // Draw a red box around the element BEFORE acting, so you SEE where it acts.

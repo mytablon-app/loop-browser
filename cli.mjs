@@ -16,7 +16,7 @@ import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from 
 import { execSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
-import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers, ensureBrowser, isBrowserUp, installSkill, profileDir, dirInfo, fmtBytes } from "./lib.mjs";
+import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers, ensureBrowser, isBrowserUp, installSkill, profileDir, dirInfo, fmtBytes, sleep } from "./lib.mjs";
 import { pickNextTicket, slugOf } from "./porter.mjs";
 import { recordDish, servedSet, logPath as serviceLogPath } from "./servicelog.mjs";
 
@@ -202,14 +202,26 @@ if (cmd === "os-dismiss" || cmd === "os-escape") {
 }
 
 const browser = await connect();
-const { page, tabCount } = await activePage(browser);
-console.log(`· 1 tab (reuse-only, ${tabCount} total) · front-and-center`);
+const { page, contentCount } = await activePage(browser);
+console.log(`· driving the active tab · ${contentCount} tab${contentCount === 1 ? "" : "s"} open`);
 
 try {
   switch (cmd) {
-    case "open":
-      await runStep(page, { do: "open", url: rest[0] });
+    case "open": {
+      // `loop open <url> new` → open a NEW tab (keeps your other sites open) via
+      // main.js's popup→newTab path; plain `loop open <url>` navigates the active tab.
+      const wantNew = rest.includes("new") || rest.includes("--new");
+      const raw = rest.find((r) => r !== "new" && r !== "--new") || "";
+      if (wantNew) {
+        const url = /^https?:\/\//i.test(raw) ? raw : "https://" + raw;
+        await page.evaluate((u) => window.open(u, "_blank"), url);
+        await sleep(1500);
+        console.log(`✓ opened in a NEW tab: ${url} — other tabs stay open.`);
+      } else {
+        await runStep(page, { do: "open", url: raw });
+      }
       break;
+    }
     case "fill":
       await runStep(page, { do: "fill", target: rest[0], value: rest.slice(1).join(" ") });
       break;
