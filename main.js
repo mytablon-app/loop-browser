@@ -175,8 +175,12 @@ function newTab(url) {
   wc.on("destroyed", () => {
     const i = tabs.findIndex((t) => t.id === id);
     if (i < 0) return;
-    try { win.contentView.removeChildView(view); } catch (_) {} // CDP-closed tabs bypass closeTab → detach the view so it doesn't linger
+    // NOTE: do NOT removeChildView here — the webContents is already destroyed and
+    // touching the view trips a native CHECK (SIGTRAP crash). Pruning tabs[] is enough;
+    // Electron reclaims the detached view. (removeChildView is only safe in closeTab,
+    // where the view is still alive.)
     tabs.splice(i, 1);
+    if (!win || win.isDestroyed()) return; // tearing down — don't respawn/activate into a dying window
     if (!tabs.length) return newTab();
     if (activeId === id) activate(tabs[Math.max(0, i - 1)].id);
     else sendTabs();
@@ -186,20 +190,25 @@ function newTab(url) {
 
 function activate(id) {
   if (!tabs.some((t) => t.id === id)) return;
+  if (!win || win.isDestroyed()) return; // app tearing down (destroyed events fire during quit) — do nothing
   activeId = id;
   for (const t of tabs) {
     try {
-      if (t.view && t.view.webContents && !t.view.webContents.isDestroyed()) {
+      const wc = t.view && t.view.webContents;
+      if (wc && !wc.isDestroyed()) {
         t.view.setVisible(t.id === id);
         // Mark the active tab so the CLI (activePage) drives the tab you're looking
         // at, not just the first one — lets you keep several sites open at once.
-        t.view.webContents.executeJavaScript(`window.__loopActiveTab=${t.id === id}`, true).catch(() => {});
+        wc.executeJavaScript(`window.__loopActiveTab=${t.id === id}`, true).catch(() => {});
       }
     } catch (_) {}
   }
-  win.contentView.addChildView(toolbar); // keep toolbar on top
-  layout();
-  sendTabs();
+  try {
+    if (toolbar && toolbar.webContents && !toolbar.webContents.isDestroyed())
+      win.contentView.addChildView(toolbar); // keep toolbar on top
+    layout();
+    sendTabs();
+  } catch (_) {}
 }
 
 function closeTab(id) {
