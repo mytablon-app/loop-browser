@@ -42,12 +42,13 @@
     "prestart": "node scripts/rebrand-electron.mjs",
     "start": "electron .",
     "cli": "node cli.mjs",
-    "prepublishOnly": "node scripts/check-no-secrets.mjs",
+    "check:bundle": "node scripts/check-bundled-imports.mjs",
+    "prepublishOnly": "node scripts/check-no-secrets.mjs && node scripts/check-bundled-imports.mjs",
     "install-skill": "node scripts/install-skill.mjs",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder --mac",
-    "dist:win": "electron-builder --win",
-    "dist:win:signed": "electron-builder --win --config electron-builder.signing.js",
+    "pack": "npm run check:bundle && electron-builder --dir",
+    "dist": "npm run check:bundle && electron-builder --mac",
+    "dist:win": "npm run check:bundle && electron-builder --win",
+    "dist:win:signed": "npm run check:bundle && electron-builder --win --config electron-builder.signing.js",
     "site": "node scripts/dev-server.mjs"
   },
   "build": {
