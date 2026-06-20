@@ -2,7 +2,7 @@
 // Glass UI, lean tab manager, browser-wide theme, loading bar.
 // CDP 9222 so the CLI engine drives the active tab.
 
-const { app, BrowserWindow, WebContentsView, ipcMain, nativeImage, dialog, clipboard } = require("electron");
+const { app, BrowserWindow, WebContentsView, ipcMain, nativeImage, dialog, clipboard, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { execFile } = require("child_process");
@@ -34,6 +34,8 @@ app.userAgentFallback =
 
 const TOOLBAR_H = 88; // 36 tab strip + 52 address row (see ui/toolbar.html)
 const HOME = path.join(__dirname, "ui", "home.html");
+const VERSION = require("./package.json").version;
+const DOWNLOAD_URL = "https://loop-browser.vercel.app"; // where app users grab the new DMG/EXE
 const ICON = path.join(__dirname, "assets", "loop-dock-icon.png");
 const DARK = "#0a0e1a";
 const LIGHT = "#f5f6fb";
@@ -419,6 +421,7 @@ function createWindow() {
     setProgress(0.55, "Loading…");
     toolbar.webContents.send("theme", theme);
     newTab();
+    setTimeout(checkForUpdate, 4000); // non-blocking: nudge if a newer version is published
   });
 
   layout(); // size the views now; the window itself stays hidden until revealMain()
@@ -487,6 +490,34 @@ ipcMain.on("loop-dialog", (event, opts) => {
     event.returnValue = type === "confirm" ? false : null;
   }
 });
+
+// Toast's "Update" → open the download/release page (works for unsigned app builds).
+ipcMain.on("open-update", () => { shell.openExternal(DOWNLOAD_URL).catch(() => {}); });
+
+// Lightweight update check: ask the npm registry for the latest published version,
+// compare to the bundled one, and nudge the glass toolbar if newer. No electron-updater,
+// no signing — just a heads-up so DMG/EXE users know to re-download. Fails silent offline.
+function cmpVer(a, b) { // returns >0 if a newer than b
+  const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+  return 0;
+}
+function checkForUpdate() {
+  try {
+    require("https").get("https://registry.npmjs.org/loop-browser/latest",
+      { timeout: 6000 }, (res) => {
+        let body = "";
+        res.on("data", (c) => (body += c));
+        res.on("end", () => {
+          try {
+            const latest = JSON.parse(body).version;
+            if (latest && cmpVer(latest, VERSION) > 0 && toolbar && !toolbar.webContents.isDestroyed())
+              toolbar.webContents.send("update-available", { latest, current: VERSION });
+          } catch {}
+        });
+      }).on("error", () => {}).on("timeout", function () { this.destroy(); });
+  } catch {}
+}
 
 if (gotInstanceLock) app.whenReady().then(() => {
   try { theme = JSON.parse(fs.readFileSync(themeFile(), "utf8")).theme || "dark"; } catch {}

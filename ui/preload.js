@@ -15,4 +15,6 @@ contextBridge.exposeInMainWorld("loop", {
   onTabs: (cb) => ipcRenderer.on("tabs", (_e, d) => cb(d.tabs)),
   onLoading: (cb) => ipcRenderer.on("loading", (_e, v) => cb(v)),
   onTheme: (cb) => ipcRenderer.on("theme", (_e, t) => cb(t)),
+  onUpdate: (cb) => ipcRenderer.on("update-available", (_e, d) => cb(d)),
+  openUpdate: () => ipcRenderer.send("open-update"),
 });

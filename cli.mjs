@@ -24,6 +24,31 @@ const RECIPES_DIR = new URL("./recipes/", import.meta.url);
 const LOCAL_DIR = new URL("./recipes/local/", import.meta.url);
 const [cmd, ...rest] = process.argv.slice(2);
 
+const VERSION = JSON.parse(readFileSync(new URL("./package.json", import.meta.url))).version;
+const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
+  for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
+// Once-a-day, TTY-only nudge so `loop`/npm users know a newer version exists. Cache-backed
+// (instant on cache hit), 1.5s network budget when stale, stderr only — never pollutes recipe stdout.
+async function maybeNudge() {
+  if (!process.stderr.isTTY) return;
+  try {
+    const cacheFile = path.join((await import("os")).homedir(), ".loop-update.json");
+    let cache = {}; try { cache = JSON.parse(readFileSync(cacheFile, "utf8")); } catch {}
+    if (!cache.ts || Date.now() - cache.ts > 864e5) {
+      try {
+        const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 1500);
+        const r = await fetch("https://registry.npmjs.org/loop-browser/latest", { signal: ctl.signal });
+        clearTimeout(t);
+        cache = { ts: Date.now(), latest: (await r.json()).version };
+        writeFileSync(cacheFile, JSON.stringify(cache));
+      } catch {}
+    }
+    if (cache.latest && cmpVer(cache.latest, VERSION) > 0)
+      process.stderr.write(`\n  ⟳ loop-browser ${cache.latest} available — update: npm i -g loop-browser@latest\n\n`);
+  } catch {}
+}
+await maybeNudge();
+
 // Resolve a recipe by name — private (recipes/local) wins over shipped (recipes/),
 // so a personal overlay (real URLs, pantry paths) shadows a method-only template.
 function resolveRecipe(name) {
