@@ -1,37 +1,25 @@
 name: Publish to npm
 
-# Publishes loop-browser to npm via Trusted Publishing (GitHub OIDC) — no token
-# stored anywhere. Fires when a version tag is pushed:
-#   npm version patch && git push --follow-tags
-#
-# One-time setup on npmjs.com: package → Settings → Trusted Publisher →
-# GitHub Actions → org=mytablon-app, repo=loop-browser, workflow=publish.yml
+# Publishes loop-browser to npm when a version tag is pushed, using the NPM_TOKEN
+# repo secret (an npm granular Automation token with publish + bypass-2FA).
+# Release flow:  npm version patch && git push --follow-tags
+#   The tag push triggers this — do NOT also publish manually, or it fails with
+#   "cannot publish over existing version".
 on:
   push:
     tags:
       - "v*"
 
-permissions:
-  contents: read
-  id-token: write # required for Trusted Publishing + provenance
-
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions: # also at job level — top-level alone wasn't granting id-token here
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # NOTE: no `registry-url` — it writes an .npmrc expecting NODE_AUTH_TOKEN,
-      # whose empty value breaks OIDC Trusted Publishing. npm 11.5.1+ picks up the
-      # OIDC token automatically. Upgrade + publish in ONE step so the publish uses
-      # the upgraded npm (a separate step can fall back to the bundled npm 10.x).
-      - name: Publish via Trusted Publishing (OIDC, no token)
-        run: |
-          npm install -g npm@latest
-          echo "using npm $(npm --version)"
-          npm publish --access public
+          registry-url: "https://registry.npmjs.org" # writes an .npmrc that reads NODE_AUTH_TOKEN
+      - name: Publish
+        run: npm publish --access public # prepublishOnly runs the secrets guard
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
