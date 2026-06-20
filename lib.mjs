@@ -128,12 +128,18 @@ export async function activePage(browser) {
     );
   }
   // Drive the tab you're LOOKING AT: main.js flags the active tab with
-  // window.__loopActiveTab. So you can keep LinkedIn, WhatsApp, etc. open at once
-  // and `loop` acts on the front one. Fall back to the first tab (single-tab case).
-  let page = content[0];
-  for (const p of content) {
-    try { if (await p.evaluate(() => window.__loopActiveTab === true)) { page = p; break; } } catch (_) {}
-  }
+  // window.__loopActiveTab (true on front, false on the rest, re-asserted on each
+  // navigation). So you can keep LinkedIn, WhatsApp, etc. open and `loop` acts on
+  // the front one. Selection order handles the mid-navigation window too:
+  //   1) explicit active (flag true)
+  //   2) the tab NOT explicitly inactive (flag cleared by an in-flight nav, not yet false)
+  //   3) first content tab (single-tab / cold start)
+  const flags = await Promise.all(
+    content.map((p) => p.evaluate(() => window.__loopActiveTab).catch(() => "err"))
+  );
+  let idx = flags.indexOf(true);
+  if (idx < 0) idx = flags.findIndex((f) => f !== false && f !== "err");
+  const page = content[idx < 0 ? 0 : idx];
   await page.bringToFront();
   // Native JS dialogs otherwise deadlock the page. The one we hit in practice is
   // the "Leave site? — unsaved changes" beforeunload when navigating away from a

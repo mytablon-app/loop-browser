@@ -109,6 +109,17 @@ const PATCH_DIALOGS = `(()=>{const d=window.__loopDialogs;if(!d)return;
   window.confirm=(m)=>!!d.confirm(m);
   window.prompt=(m,v)=>d.prompt(m,v);})();`;
 
+// Rate-limit page-initiated tab opens (window.open / target=_blank) so a hostile
+// or buggy page can't spawn tabs in a loop. Max 5 in any rolling 3s.
+let _tabOpenTimes = [];
+function allowTabOpen() {
+  const now = Date.now();
+  _tabOpenTimes = _tabOpenTimes.filter((t) => now - t < 3000);
+  if (_tabOpenTimes.length >= 5) return false;
+  _tabOpenTimes.push(now);
+  return true;
+}
+
 function newTab(url) {
   const view = new WebContentsView({
     // content-preload bridges window.confirm/alert/prompt to the main process
@@ -130,21 +141,33 @@ function newTab(url) {
   wc.on("did-start-navigation", (_e, navUrl, _ip, isMain) => {
     if (isMain) view.setBackgroundColor(navUrl.includes("ui/home.html") ? homeBg() : "#ffffff");
   });
-  wc.on("did-navigate", sendTabs);
+  const flagActive = () => wc.executeJavaScript(`window.__loopActiveTab=${id === activeId}`, true).catch(() => {});
+  wc.on("did-navigate", () => { sendTabs(); flagActive(); }); // re-assert ASAP after a navigation clears the page global
   wc.on("did-navigate-in-page", sendState);
   wc.on("page-title-updated", sendTabs);
-  wc.on("did-finish-load", () => { sendTabs(); if (isHome(wc)) applyTheme(wc); homeReady = true; tryReveal();
-    wc.executeJavaScript(`window.__loopActiveTab=${id === activeId}`, true).catch(() => {}); });
+  wc.on("did-finish-load", () => { sendTabs(); if (isHome(wc)) applyTheme(wc); homeReady = true; tryReveal(); flagActive(); });
   const loading = (v) => {
     if (id === activeId && toolbar && !toolbar.webContents.isDestroyed())
       toolbar.webContents.send("loading", v);
   };
   wc.on("did-start-loading", () => loading(true));
   wc.on("did-stop-loading", () => loading(false));
-  wc.on("dom-ready", () => wc.executeJavaScript(PATCH_DIALOGS, true).catch(() => {}));
+  wc.on("dom-ready", () => { wc.executeJavaScript(PATCH_DIALOGS, true).catch(() => {}); flagActive(); }); // earliest reliable re-assert (≈ domcontentloaded, when `loop open` returns)
   wc.setWindowOpenHandler(({ url: u }) => {
-    newTab(u && u !== "about:blank" ? u : undefined); // popups → new tab
+    // Only let a page open a normal web tab — never file:/javascript:/data:/etc. —
+    // and rate-limit so a hostile page can't tab-bomb the window.
+    const web = /^https?:\/\//i.test(u || "");
+    if ((web || !u || u === "about:blank") && allowTabOpen()) newTab(web ? u : undefined);
     return { action: "deny" };
+  });
+  // Browser keyboard shortcuts — handled in main so they work even when a website
+  // (not the toolbar) has focus: ⌘/Ctrl+T new tab, +W close tab, +L focus address bar.
+  wc.on("before-input-event", (e, input) => {
+    if (input.type !== "keyDown" || !(process.platform === "darwin" ? input.meta : input.control)) return;
+    const k = (input.key || "").toLowerCase();
+    if (k === "t") { e.preventDefault(); newTab(); }
+    else if (k === "w") { e.preventDefault(); closeTab(activeId); }
+    else if (k === "l") { e.preventDefault(); toolbar.webContents.focus(); toolbar.webContents.send("focus-addr"); }
   });
   // If this tab's web-contents is destroyed out from under us (e.g. closed over
   // CDP, which bypasses closeTab), prune it from tabs[] so sendTabs/activate never
@@ -152,6 +175,7 @@ function newTab(url) {
   wc.on("destroyed", () => {
     const i = tabs.findIndex((t) => t.id === id);
     if (i < 0) return;
+    try { win.contentView.removeChildView(view); } catch (_) {} // CDP-closed tabs bypass closeTab → detach the view so it doesn't linger
     tabs.splice(i, 1);
     if (!tabs.length) return newTab();
     if (activeId === id) activate(tabs[Math.max(0, i - 1)].id);

@@ -214,9 +214,18 @@ try {
       const raw = rest.find((r) => r !== "new" && r !== "--new") || "";
       if (wantNew) {
         const url = /^https?:\/\//i.test(raw) ? raw : "https://" + raw;
+        const ctx = browser.contexts()[0];
+        const before = new Set(ctx.pages());
         await page.evaluate((u) => window.open(u, "_blank"), url);
-        await sleep(1500);
-        console.log(`✓ opened in a NEW tab: ${url} — other tabs stay open.`);
+        let opened = null;                       // poll for the real new tab — don't claim success blindly
+        for (let i = 0; i < 20 && !opened; i++) { await sleep(300); opened = ctx.pages().find((p) => !before.has(p)); }
+        if (opened) {
+          await opened.waitForLoadState("domcontentloaded", { timeout: 8000 }).catch(() => {});
+          console.log(`✓ opened in a NEW tab: ${opened.url() || url} — other tabs stay open.`);
+        } else {
+          console.log(`⚠ new tab for ${url} didn't appear (popup blocked or rate-limited). Other tabs untouched.`);
+          process.exitCode = 1;
+        }
       } else {
         await runStep(page, { do: "open", url: raw });
       }

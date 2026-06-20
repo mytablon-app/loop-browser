@@ -17,4 +17,5 @@ contextBridge.exposeInMainWorld("loop", {
   onTheme: (cb) => ipcRenderer.on("theme", (_e, t) => cb(t)),
   onUpdate: (cb) => ipcRenderer.on("update-available", (_e, d) => cb(d)),
   openUpdate: () => ipcRenderer.send("open-update"),
+  onFocusAddr: (cb) => ipcRenderer.on("focus-addr", () => cb()),
 });
