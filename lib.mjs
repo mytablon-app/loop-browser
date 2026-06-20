@@ -334,7 +334,9 @@ export async function runStep(page, step, vars = {}) {
   const v = (s) => interpolate(s, vars);
   switch (step.do) {
     case "open": {
-      const url = v(step.url);
+      let url = v(step.url);
+      // Accept bare domains (`loop open example.com`) — page.goto needs a scheme.
+      if (url && !/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = "https://" + url;
       console.log(`  · open ${url}`);
       try {
         await page.goto(url, { waitUntil: "domcontentloaded" });
