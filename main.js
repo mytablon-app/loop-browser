@@ -61,11 +61,13 @@ function layout() {
 function sendTabs() {
   if (!toolbar || toolbar.webContents.isDestroyed()) return;
   toolbar.webContents.send("tabs", {
-    tabs: tabs.map((t) => ({
-      id: t.id,
-      title: t.view.webContents.getTitle() || "New Tab",
-      active: t.id === activeId,
-    })),
+    tabs: tabs
+      .filter((t) => t.view && t.view.webContents && !t.view.webContents.isDestroyed())
+      .map((t) => ({
+        id: t.id,
+        title: t.view.webContents.getTitle() || "New Tab",
+        active: t.id === activeId,
+      })),
   });
   sendState();
 }
@@ -141,13 +143,29 @@ function newTab(url) {
     newTab(u && u !== "about:blank" ? u : undefined); // popups → new tab
     return { action: "deny" };
   });
+  // If this tab's web-contents is destroyed out from under us (e.g. closed over
+  // CDP, which bypasses closeTab), prune it from tabs[] so sendTabs/activate never
+  // touch a dead view. Idempotent with closeTab (findIndex<0 → no-op).
+  wc.on("destroyed", () => {
+    const i = tabs.findIndex((t) => t.id === id);
+    if (i < 0) return;
+    tabs.splice(i, 1);
+    if (!tabs.length) return newTab();
+    if (activeId === id) activate(tabs[Math.max(0, i - 1)].id);
+    else sendTabs();
+  });
   activate(id);
 }
 
 function activate(id) {
   if (!tabs.some((t) => t.id === id)) return;
   activeId = id;
-  for (const t of tabs) t.view.setVisible(t.id === id);
+  for (const t of tabs) {
+    try {
+      if (t.view && t.view.webContents && !t.view.webContents.isDestroyed())
+        t.view.setVisible(t.id === id);
+    } catch (_) {}
+  }
   win.contentView.addChildView(toolbar); // keep toolbar on top
   layout();
   sendTabs();

@@ -43,3 +43,9 @@ serve.mjs
 
 # Local Claude Code runtime state (locks, etc.) — not source
 .claude/
+
+# Site MODEL ships (site-memories/*.md = how a public site works = shareable method).
+# Our specifics (companyId, paths, account state, real names) stay PRIVATE in
+# site-memories/local/ (and recipes/local). Scrub packs before they ship.
+site-memories/local/*
+!site-memories/local/.gitkeep

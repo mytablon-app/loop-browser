@@ -13,12 +13,51 @@
 //   loop recipes                    (list saved recipes)
 
 import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { execSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers, ensureBrowser, isBrowserUp, installSkill, profileDir, dirInfo, fmtBytes } from "./lib.mjs";
+import { pickNextTicket, slugOf } from "./porter.mjs";
+import { recordDish, servedSet, logPath as serviceLogPath } from "./servicelog.mjs";
 
 const RECIPES_DIR = new URL("./recipes/", import.meta.url);
+const LOCAL_DIR = new URL("./recipes/local/", import.meta.url);
 const [cmd, ...rest] = process.argv.slice(2);
+
+// Resolve a recipe by name — private (recipes/local) wins over shipped (recipes/),
+// so a personal overlay (real URLs, pantry paths) shadows a method-only template.
+function resolveRecipe(name) {
+  const local = new URL(`${name}.json`, LOCAL_DIR);
+  const url = existsSync(local) ? local : new URL(`${name}.json`, RECIPES_DIR);
+  return JSON.parse(readFileSync(url));
+}
+
+// Run a recipe's steps under the Guardian (retry → incident → stop). Shared by
+// `run` (one dish, ingredients on the CLI) and `serve` (ingredients from a ticket).
+async function runRecipe(page, recipe, vars, name) {
+  console.log(`▶ running recipe "${recipe.name}" (${recipe.steps.length} steps, no LLM)`);
+  for (const [i, step] of recipe.steps.entries()) {
+    try {
+      await withRetry(() => runStep(page, step, vars), { tries: step.tries ?? 3 });
+    } catch (e) {
+      const shot = await captureFailure(page, `${name}-fail-step${i + 1}`);
+      const incident = await captureIncident(page, { recipe: name, stepIndex: i, step, vars, error: e, shot });
+      console.error(`\n✗ step ${i + 1}/${recipe.steps.length} (${step.do}) BROKE after retries`);
+      console.error(`  reason   : ${e.message}`);
+      console.error(`  url      : ${page.url()}`);
+      console.error(`  📸 shot  : ${shot}`);
+      console.error(`  📋 report: ${incident}`);
+      console.error(`  recovery ladder:`);
+      console.error(`    • heal     → Head Chef reads the report ↑ and patches the recipe, then re-run`);
+      console.error(`    • takeover → finish this step in the visible window, then resume`);
+      console.error(`    • abort    → stop safely (nothing destructive attempted)`);
+      process.exitCode = 1;
+      return false;
+    }
+  }
+  console.log(`✓ recipe "${recipe.name}" complete`);
+  return true;
+}
 
 // "loop recipes" doesn't need the browser (alias: "flows" for muscle memory)
 if (cmd === "recipes" || cmd === "flows") {
@@ -82,6 +121,58 @@ if (cmd === "start" || cmd === "up") {
     console.log("ready.");
     console.log("✓ Loop Browser is running in the background. Keep working — drive it with `loop …`.");
   }
+  process.exit(0);
+}
+
+// "loop shot-os" — OS-LEVEL screenshot. CDP/Playwright (`loop shot`) only see the
+// web page; NATIVE dialogs (macOS/Windows file pickers, OS confirms) live outside
+// the web content and are INVISIBLE to it. This captures the real screen — bring
+// Loop Browser frontmost so its window + any modal dialog show, then screencapture.
+// Use this the moment a native dialog might be involved (file upload, OS prompt).
+if (cmd === "shot-os" || cmd === "os-shot") {
+  const name = rest[0] || "os-screen";
+  const dir = new URL("./runs/", import.meta.url);
+  mkdirSync(dir, { recursive: true });
+  const out = new URL(`${name}.png`, dir).pathname;
+  if (process.platform === "darwin") {
+    for (const proc of ["Loop Browser", "Electron"]) {
+      try { execSync(`osascript -e 'tell application "System Events" to set frontmost of process "${proc}" to true'`, { stdio: "ignore" }); break; } catch {}
+    }
+    try { execSync("sleep 0.6"); } catch {}
+    execSync(`screencapture -x ${JSON.stringify(out)}`);
+  } else if (process.platform === "win32") {
+    // PowerShell full-screen grab (native dialogs included).
+    const ps = `Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $b=[System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp=New-Object Drawing.Bitmap $b.Width,$b.Height; $g=[Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[Drawing.Point]::Empty,$b.Size); $bmp.Save('${out.replace(/\\/g, "\\\\")}')`;
+    execSync(`powershell -NoProfile -Command "${ps}"`);
+  } else {
+    console.error("shot-os: native-screen capture not wired for this platform");
+    process.exit(1);
+  }
+  console.log(`  · os-shot → ${out}`);
+  console.log(`    (captures NATIVE dialogs that 'loop shot'/'snapshot' cannot — Read this PNG)`);
+  process.exit(0);
+}
+
+// "loop os-dismiss [n]" — close a NATIVE modal (file picker, OS confirm) that lives
+// OUTSIDE the web page and so can't be closed via CDP. Brings Loop Browser frontmost
+// then sends Escape (= Cancel for file dialogs) n times (default 1). Pair with
+// `loop shot-os` to confirm it actually closed.
+if (cmd === "os-dismiss" || cmd === "os-escape") {
+  const n = Math.max(1, parseInt(rest[0], 10) || 1);
+  if (process.platform === "darwin") {
+    for (const proc of ["Loop Browser", "Electron"]) {
+      try { execSync(`osascript -e 'tell application "System Events" to set frontmost of process "${proc}" to true'`, { stdio: "ignore" }); break; } catch {}
+    }
+    for (let i = 0; i < n; i++) {
+      try { execSync(`osascript -e 'tell application "System Events" to key code 53'`, { stdio: "ignore" }); } catch {}
+    }
+  } else if (process.platform === "win32") {
+    try { execSync(`powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{ESC}')"`, { stdio: "ignore" }); } catch {}
+  } else {
+    console.error("os-dismiss: not wired for this platform");
+    process.exit(1);
+  }
+  console.log(`  · os-dismiss → sent Escape ×${n} (confirm with: loop shot-os)`);
   process.exit(0);
 }
 
@@ -162,7 +253,7 @@ try {
     case "run": {
       const name = rest[0];
       if (!name) throw new Error("usage: loop run <recipe-name> key=value ...");
-      const recipe = JSON.parse(readFileSync(new URL(`${name}.json`, RECIPES_DIR)));
+      const recipe = resolveRecipe(name);
 
       // ingredients: defaults from the recipe, overridden by key=value args
       const vars = { ...(recipe.ingredients || recipe.inputs || {}) };
@@ -170,42 +261,60 @@ try {
         const i = a.indexOf("=");
         if (i > 0) vars[a.slice(0, i)] = a.slice(i + 1);
       }
+      await runRecipe(page, recipe, vars, name);
+      break;
+    }
 
-      console.log(`▶ running recipe "${recipe.name}" (${recipe.steps.length} steps, no LLM)`);
-      let broke = false;
-      for (const [i, step] of recipe.steps.entries()) {
-        try {
-          // Guardian rung 1: retry transient failures before declaring a break.
-          await withRetry(() => runStep(page, step, vars), { tries: step.tries ?? 3 });
-        } catch (e) {
-          // Guardian: this step truly broke. Capture evidence + offer recovery.
-          const shot = await captureFailure(page, `${name}-fail-step${i + 1}`);
-          const incident = await captureIncident(page, {
-            recipe: name, stepIndex: i, step, vars, error: e, shot,
-          });
-          console.error(`\n✗ step ${i + 1}/${recipe.steps.length} (${step.do}) BROKE after retries`);
-          console.error(`  reason   : ${e.message}`);
-          console.error(`  url      : ${page.url()}`);
-          console.error(`  📸 shot  : ${shot}`);
-          console.error(`  📋 report: ${incident}`);
-          console.error(`  recovery ladder:`);
-          console.error(`    • heal     → Head Chef reads the report ↑ and patches recipes/${name}.json, then re-run`);
-          console.error(`    • takeover → finish this step in the visible window, then resume`);
-          console.error(`    • abort    → stop safely (nothing destructive attempted)`);
-          broke = true;
-          process.exitCode = 1;
-          break; // stop the recipe — never barrel on past a break
-        }
+    case "serve": {
+      // SERVICE LAYER — the Head Chef working the shift. Reads a pantry of ticket
+      // .txt files, picks the next un-served one, hands its fields to the recipe as
+      // ingredients, then ledgers the outcome (the ledger is also the dedup guard).
+      // The recipe stays a dumb method; nothing about folders/tickets lives in it.
+      const name = rest[0];
+      if (!name) throw new Error("usage: loop serve <recipe-name> [pantry=<dir>] [force=1]");
+      const recipe = resolveRecipe(name);
+      const t = recipe.ticket;
+      if (!t) throw new Error(`recipe "${name}" has no "ticket" block — serve needs a pantry mapping`);
+
+      const opts = {};
+      for (const a of rest.slice(1)) { const i = a.indexOf("="); if (i > 0) opts[a.slice(0, i)] = a.slice(i + 1); }
+      const force = opts.force === "1" || opts.force === "true";
+
+      // The ticket rail (pantry), {TODAY}-stamped.
+      const today = new Date().toISOString().slice(0, 10);
+      const pantry = (opts.pantry || t.pantry || "./pantry").replace(/\{TODAY\}/g, today);
+      if (!existsSync(pantry)) throw new Error(`pantry not found: ${pantry}`);
+
+      // Dedup against the Service Log (the Expediter's book) — by /in/ slug.
+      const done = force ? new Set() : servedSet(name, "slug");
+
+      // The Porter gathers the next un-served ticket's ingredients (off the hot path).
+      const ticket = pickNextTicket(pantry, done);
+      if (!ticket) {
+        console.log(`✓ pantry drained — every ticket already served`);
+        console.log(`  ${pantry}`);
+        break;
       }
-      if (!broke) console.log(`✓ recipe "${recipe.name}" complete`);
+
+      // Hand the Porter's ingredients to the cook under the recipe's ingredient names.
+      const vars = { ...(recipe.ingredients || {}), caption: ticket.caption, image: ticket.image, tagUrl: ticket.url, name: ticket.name };
+
+      console.log(`🍽  serving "${ticket.file}"  ·  ${done.size} already served  ·  ${pantry}`);
+      if (ticket.name) console.log(`   • ${ticket.name}`);
+
+      const ok = await runRecipe(page, recipe, vars, name);
+
+      // Record in the Service Log — record of work AND dedup guard.
+      recordDish(name, { target: ticket.name || null, slug: ticket.slug, file: ticket.file, status: ok ? "served" : "failed" });
+      console.log(`  ↳ logged: ${ticket.name || ticket.file} = ${ok ? "served" : "failed"}  (${serviceLogPath()})`);
       break;
     }
 
     default:
       console.log(
         "commands: open <url> | fill <label> <text> | click <text> | press <key> | read | snapshot\n" +
-          "          run <recipe> key=value ... | recipes | author <name> \"<goal>\"\n" +
-          "          setup | start | privacy"
+          "          run <recipe> key=value ... | serve <recipe> [pantry=<dir>] [force=1]\n" +
+          "          recipes | author <name> \"<goal>\" | shot-os [name] | os-dismiss [n] | setup | start | privacy"
       );
   }
   if (!process.exitCode) console.log("✓ done — look at the window.");

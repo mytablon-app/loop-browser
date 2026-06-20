@@ -17,6 +17,7 @@ const FORBIDDEN_PATHS = [
   [/(^|\/)dishes\//, "cooked dish (output)"],
   [/(^|\/)runs\//, "run screenshot"],
   [/(^|\/)recipes\/local\//, "PRIVATE recipe (recipes/local/)"],
+  [/(^|\/)site-memories\/local\//, "PRIVATE cuisine pack (site-memories/local/)"],
   [/(^|\/)\.env(\.|$)/, ".env file"],
   [/(^|\/)\.claude\//, ".claude/"],
   [/\.local\.json$/, "*.local.json"],

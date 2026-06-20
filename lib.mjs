@@ -2,7 +2,7 @@
 // Every command reuses ONE tab and brings it to the front before acting.
 
 import { chromium } from "playwright-core";
-import { mkdirSync, writeFileSync, cpSync, existsSync, statSync, readdirSync } from "fs";
+import { mkdirSync, writeFileSync, readFileSync, cpSync, existsSync, statSync, readdirSync } from "fs";
 import { spawn } from "child_process";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
@@ -113,15 +113,31 @@ export async function connect({ autostart = true } = {}) {
 export async function activePage(browser) {
   const ctx = browser.contexts()[0];
   const pages = ctx.pages();
-  // target the CONTENT view: not blank, not the Loop glass toolbar
-  const page =
-    pages.find(
-      (p) => !p.url().startsWith("about:") && !p.url().includes("/ui/toolbar.html")
-    ) ??
-    pages.find((p) => !p.url().startsWith("about:")) ??
-    pages[0] ??
-    (await ctx.newPage());
+  // Target a REAL content tab: not the root about:blank, not the glass toolbar.
+  // NEVER create a page here. The old `?? ctx.newPage()` fallback silently spawned
+  // an off-screen shell that main.js doesn't wrap in a tab — invisible, unreachable,
+  // and they pile up (the "6 hidden shells" bug). main.js always keeps ≥1 real tab,
+  // so a content page should always exist; if it doesn't, stop loudly rather than
+  // birth something the human can't see or click.
+  const page = pages.find(
+    (p) => !p.url().startsWith("about:") && !p.url().includes("/ui/toolbar.html")
+  );
+  if (!page) {
+    throw new Error(
+      "No visible content tab to drive. Open a page in Loop Browser (a real, clickable tab) and retry — the CLI never creates hidden pages."
+    );
+  }
   await page.bringToFront();
+  // Native JS dialogs otherwise deadlock the page. The one we hit in practice is
+  // the "Leave site? — unsaved changes" beforeunload when navigating away from a
+  // composer with a draft → ACCEPT it (let navigation through). Dismiss anything
+  // else rather than blind-confirm a destructive native confirm(). Attach once.
+  if (!page.__loopDialogs) {
+    page.__loopDialogs = true;
+    page.on("dialog", (d) =>
+      (d.type() === "beforeunload" ? d.accept() : d.dismiss()).catch(() => {})
+    );
+  }
   return { page, tabCount: pages.length };
 }
 
@@ -144,7 +160,32 @@ const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // scan the live page for the best element by WORD-OVERLAP and use it. Runs only
 // after exact matching fails — a cheap recovery before we escalate to the brain.
 // Tags the winner with data-loop-heal so we can hand back a normal locator.
-async function healFind(page, target, sel) {
+// --- auto-capture: remember what a STALE target healed to, and reuse it as a fast-path
+// candidate next run (no re-heal → skips the poll-then-fuzzy cost). Captures are gitignored
+// (a target can be personal, e.g. a contact name) → site-memories/local/captured/<domain>.json.
+const _capCache = new Map();
+const _capDir = new URL("./site-memories/local/captured/", import.meta.url);
+const _capPath = (domain) => new URL(`${encodeURIComponent(domain)}.json`, _capDir);
+const _domainOf = (page) => { try { return new URL(page.url()).hostname.replace(/^www\./, ""); } catch { return "unknown"; } };
+function loadCaptures(domain) {
+  if (_capCache.has(domain)) return _capCache.get(domain);
+  let data = {};
+  try { data = JSON.parse(readFileSync(_capPath(domain), "utf8")); } catch {}
+  _capCache.set(domain, data);
+  return data;
+}
+function capturedName(page, target) {
+  return loadCaptures(_domainOf(page))[target]?.resolved || null;
+}
+function saveCapture(page, kind, target, resolved, score) {
+  if (!resolved || resolved === target) return;
+  const domain = _domainOf(page);
+  const data = loadCaptures(domain);
+  data[target] = { kind, resolved, score: Math.round(score * 100) / 100, hits: (data[target]?.hits || 0) + 1, ts: new Date().toISOString() };
+  try { mkdirSync(_capDir, { recursive: true }); writeFileSync(_capPath(domain), JSON.stringify(data, null, 2) + "\n"); } catch {}
+}
+
+async function healFind(page, target, sel, kind = "el") {
   const match = await page.evaluate(
     ({ target, sel }) => {
       const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -167,6 +208,8 @@ async function healFind(page, target, sel) {
   );
   if (!match) return null;
   console.log(`  ↻ self-healed: "${target}" → "${match.text}" (${Math.round(match.score * 100)}% word match)`);
+  saveCapture(page, kind, target, match.text, match.score);
+  console.log(`  ⓘ captured: next run tries "${match.text}" first for "${target}"`);
   return page.locator('[data-loop-heal="1"]').first();
 }
 
@@ -177,9 +220,12 @@ async function healFind(page, target, sel) {
 // deterministic word-overlap self-heal before giving up.
 export async function findInput(page, label, { timeout = 25000 } = {}) {
   const re = new RegExp(escapeRegExp(label), "i");
+  const cap = capturedName(page, label);                       // auto-capture fast path
+  const capRe = cap && new RegExp(escapeRegExp(cap), "i");
   const deadline = Date.now() + timeout;
   do {
     const candidates = [
+      ...(capRe ? [page.getByLabel(capRe), page.getByPlaceholder(capRe), page.getByRole("textbox", { name: capRe })] : []),
       page.getByLabel(re),
       page.getByPlaceholder(re),
       page.getByRole("searchbox"),
@@ -191,16 +237,19 @@ export async function findInput(page, label, { timeout = 25000 } = {}) {
     }
     await sleep(500);
   } while (Date.now() < deadline);
-  const healed = await healFind(page, label, '[role="textbox"],[role="searchbox"],input,[contenteditable="true"]');
+  const healed = await healFind(page, label, '[role="textbox"],[role="searchbox"],input,[contenteditable="true"]', "input");
   if (healed) return healed;
   throw new Error(`No input matching "${label}" (waited ${timeout}ms)`);
 }
 
 export async function findClickable(page, text, { timeout = 25000 } = {}) {
   const re = new RegExp(escapeRegExp(text), "i");
+  const cap = capturedName(page, text);                        // auto-capture fast path
+  const capRe = cap && new RegExp(escapeRegExp(cap), "i");
   const deadline = Date.now() + timeout;
   do {
     const candidates = [
+      ...(capRe ? [page.getByRole("button", { name: capRe }), page.getByRole("link", { name: capRe })] : []),
       page.getByRole("button", { name: re }),
       page.getByRole("link", { name: re }),
       page.getByText(re),
@@ -210,7 +259,7 @@ export async function findClickable(page, text, { timeout = 25000 } = {}) {
     }
     await sleep(500);
   } while (Date.now() < deadline);
-  const healed = await healFind(page, text, '[role="button"],[role="link"],button,a');
+  const healed = await healFind(page, text, '[role="button"],[role="link"],button,a', "clickable");
   if (healed) return healed;
   throw new Error(`Nothing clickable matching "${text}" (waited ${timeout}ms)`);
 }
@@ -277,17 +326,34 @@ export function interpolate(str, vars) {
 export async function runStep(page, step, vars = {}) {
   const v = (s) => interpolate(s, vars);
   switch (step.do) {
-    case "open":
-      console.log(`  · open ${v(step.url)}`);
-      await page.goto(v(step.url), { waitUntil: "domcontentloaded" });
+    case "open": {
+      const url = v(step.url);
+      console.log(`  · open ${url}`);
+      try {
+        await page.goto(url, { waitUntil: "domcontentloaded" });
+      } catch (e) {
+        // A "Leave site? — unsaved changes" beforeunload (e.g. an open composer
+        // with a draft) makes page.goto throw ERR_ABORTED even though the dialog
+        // handler accepts it. Drive the navigation client-side instead — there's
+        // no goto promise to abort — then wait for the load.
+        if (!/ERR_ABORTED/.test(e.message)) throw e;
+        await page.evaluate((u) => { window.location.href = u; }, url);
+        await page.waitForLoadState("domcontentloaded");
+      }
       break;
+    }
     case "fill": {
       const el = await findInput(page, v(step.target));
+      const text = v(step.value);
       await highlight(el);
       await el.click();
       await el.fill("");
-      await el.pressSequentially(v(step.value), { delay: 110 });
-      console.log(`  · fill "${v(step.target)}" = "${v(step.value)}"`);
+      // Human-like per-char pacing (deliberate, watchable). Scale the action
+      // timeout to the text length so long captions don't trip Playwright's
+      // 30s cap mid-type — a short default would silently break long posts.
+      const delay = step.delay ?? 110;
+      await el.pressSequentially(text, { delay, timeout: Math.max(30000, text.length * delay + 20000) });
+      console.log(`  · fill "${v(step.target)}" = "${text}"`);
       break;
     }
     case "click": {

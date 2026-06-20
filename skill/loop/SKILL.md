@@ -49,6 +49,7 @@ whole setup; after it, they just talk to you.
 - `loop scrape-members "<group>" [outDir]` — (WhatsApp-specific) harvest the open group's members → CSV.
 
 ## Authoring a recipe (your main job, as the brain)
+0. If a cuisine pack exists for the site (`site-memories/<domain>.md`), read it FIRST — it holds the known selectors/flow/quirks so you don't re-explore. That + the dish is your only context; don't carry unrelated memory into a cook.
 1. `loop open <url>` to the starting page, then `loop snapshot` to see the real role/name labels.
 2. (Optional) `loop author <name> "<goal>"` to capture a brief + scaffold the file.
 3. Write `recipes/<name>.json`:

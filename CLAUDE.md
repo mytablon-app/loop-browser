@@ -1,51 +1,63 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guides Claude Code in this repo. **Keep it tight — it loads every turn.** Lore (full brigade roster, restaurant/cuisine analogy, strategy) lives in auto-memory (`MEMORY.md`); per-restaurant cooking knowledge lives in `site-memories/<domain>.md` (loaded only when cooking that site). **Do not grow this file with narrative.**
 
 # Loop Browser
 
-A **visible glass Electron browser you command from a CLI** to automate any website. It reads the
-page's accessibility tree (code, not pixels), finds elements, and acts — while you watch. Frequent
-tasks are saved as **recipes** that replay deterministically with **no LLM in the hot path**; the
-LLM only shows up to *author* or *heal* a recipe.
+A **visible glass Electron browser commanded from a CLI** to automate any website. It reads the page's accessibility tree (code, not pixels), finds elements, and acts — while you watch. Frequent tasks are saved as **recipes** that replay deterministically with **no LLM in the hot path**; the LLM only *authors* or *heals* a recipe.
 
-## The kitchen model (canonical — keep all copy/code consistent with this)
-- **Kitchen** = Loop Browser (the Electron app) + the engine.
-- **Recipe** = a saved flow `recipes/<name>.json` — fixed steps. The *method*.
-- **Ingredients** = your data, passed at cook time (`group="…"`). Never baked into the recipe.
-- **Dish** = the cooked output (e.g. a CSV) = an automation.
-- **Line Cook** = running a recipe (`loop run`) — deterministic, fast, **no LLM**. ~99% of the work.
-- **Head Chef** = the **`loop` CLI** (the chef who cooks).
-- **Brain / wisdom** = the **LLM (Claude Code)** — authors a new recipe or heals a broken one. Twice only.
-- **Guardian** = on a break: retry → screenshot → incident report → stop safely. Never guesses.
-- **Owner** = the human. Holds the key — **only the human logs in.**
+## The lane (narrow on purpose — superb at one thing, not a general assistant)
+Loop **authors, runs, or heals a recipe that drives the visible browser to cook one dish in one restaurant (site).** The LLM appears only to author/heal — **never in a running cook.**
+- **Always:** target by role/label/text; record cooked dishes to the Service Log; tidy up after a cook; verify before declaring done.
+- **Ask first:** anything destructive/irreversible/mass-send; outward-facing content (posts, DMs); changing account settings.
+- **Never:** type credentials (only the human logs in); blast batches without pacing; bypass a platform throttle; ship personal data.
+- **Out of lane** (general research, unrelated features) → take the smallest in-lane action or stop & ask. Don't wander.
+
+### Loop Mode vs Owner Mode (two states — ANNOUNCE every flip; details → memory `owner-loop-mode`)
+- **🔒 Loop Mode ON** — blinders on, cooking one dish. Micro-memory = ONLY this site's cuisine pack + this dish. Fast, no deliberation beyond the dish. Off-dish → don't improvise; stop and hand back to the owner (fail-fast beats wandering). **Always mop** (Mopper clears scratch/drafts) as the closing step before handing back.
+- **🔓 Owner Mode (OFF)** — strategy, research, design, build, discuss. Full context + general tools.
+- **Switch ON** to execute a named dish (cook/run/serve/send X, a recipe, a batch); **OFF** to think/plan/build/discuss or when a cook hits something out of lane. Owner can force it: **"loop mode on/off."** Open every cooking turn with `🔒 Loop Mode ON (memory: <pack> + <dish>)`, else `🔓 Owner Mode`.
+- **Decisive test** (not "am I in the browser"): **is there ONE defined, bounded dish on ONE named site?** → ON (read-only counts — e.g. "read group X → study"). Open-ended exploration/research → OFF. Building a tool = OFF; running/verifying it = ON (announce the flip).
+- **Realize ON:** known recipe → `loop run`/`serve`; brain needed → delegate to `loop-cook` subagent. In-chat blinders = fallback (can't be hard-enforced inside Claude Code).
+
+## Kitchen vocabulary (canonical)
+- **Recipe** = `recipes/<name>.json` — fixed steps = the method. **Ingredients** = data gathered at cook time (never baked in). **Dish** = the cooked output/automation.
+- **Line Cook** = `loop run`/`loop serve` — deterministic, no LLM, ~99% of work. **Head Chef / Brain** = the LLM — authors/heals only, off the hot path (the moat). **Owner** = the human (holds the key).
+- **Porter** (`porter.mjs`) = gathers ingredients off the hot path (files, Voyager, messages). **Expediter** (`loop serve`) = picks next ticket, dedups, keeps the **Service Log**, verifies. **Sous Chef** = Guardian (retry → self-heal → incident → stop). **Mopper** = tidy-up (task = "mop"; ex-Plongeur).
+- **Service Log** = `dishes/service-log.json` — every dish cooked, keyed by dish→date; record of work + dedup guard; personal → gitignored.
+- (Full roster + restaurant/cuisine analogy → memory `loop-kitchen-model-full`.)
+
+## Cuisine packs (the cook's context — load ONLY when cooking that restaurant)
+Per-restaurant knowledge (selectors, flow, quirks, account-health) lives in **`site-memories/<domain>.md`** — the **generic site MODEL ships** (no personal data); your specifics (companyId, paths, account state, real names) stay private in `site-memories/local/` / `recipes/local/`. **When cooking/authoring on a site, read its cuisine pack — that's your cuisine context, and nothing else cuisine-wise.** Keep the two memories apart: the owner/strategy context stays in the chat; a cook loads only its **cuisine pack + the dish**.
+**Delegation rail (default — don't cook inline in the owner chat):**
+- **Known recipe, no brain needed** → just `loop run`/`loop serve` (deterministic, zero LLM, zero memory).
+- **Brain needed** (author / heal / drive a not-yet-recipe'd flow) → delegate to the **`loop-cook` subagent** (`.claude/agents/loop-cook.md`): a fresh, narrow context with bounded tools that reads ONLY the site's cuisine pack + the dish — never the owner chat. It cooks, tidies, records, and returns a tight summary.
+
+Existing packs: `site-memories/linkedin.md`, `site-memories/whatsapp.md`. Bespoke drivers: `cook-linkedin.mjs`, `cook-connect.mjs`.
+**Building packs (standing practice):** build/extend a pack for **multi-dish or quirky/behind-login** restaurants; keep it to the **map + cross-dish knowledge + quirks + safety** — NOT copies of recipe steps. Seed the route from prior knowledge, **verify live, capture the exact selectors.** Skip one-off public sites (the recipe alone suffices) — don't make packs that are double work. **Auto-capture is BUILT:** on a successful self-heal the engine records `target → resolved` to `site-memories/local/captured/<domain>.json` (gitignored) and tries it first next run — stale targets heal once, then never again.
 
 ## Layout
-- `main.js` — Electron main: frameless glass window (platform-aware: macOS vibrancy / Windows acrylic), maximised, exposes **CDP on `localhost:9222`**.
+- `main.js` — Electron main: frameless glass window (macOS vibrancy / Windows acrylic), maximised, exposes **CDP on `localhost:9222`**.
 - `cli.mjs` — the `loop` CLI: connects over CDP, runs single commands + recipes (Guardian-wrapped).
 - `lib.mjs` — engine core: `connect`/`activePage`, `findInput`/`findClickable` (poll + deterministic self-heal), `runStep` primitives, `harvestMembers`, `captureIncident`/`captureAuthoringContext`.
+- `porter.mjs` (ingredient gathering) · `servicelog.mjs` (the Service Log).
 - `ui/` — `home.html`, `toolbar.html`, `preload.js` (the glass UI).
 - `recipes/` — saved recipes (`*.json`). `recipes/local/` = private (gitignored).
-- `bin/loop` (macOS/POSIX) + `bin/loop.cmd` (Windows) — packaged-app CLI shim: runs the bundled `cli.mjs` via the app's own Electron (`ELECTRON_RUN_AS_NODE`), so a user needs neither system Node nor the repo. First launch (`maybeInstallCli()`) offers to add it to PATH — symlink into `/usr/local/bin` on macOS; append `…\resources\app\bin` to the user PATH on Windows.
-- `skill/loop/SKILL.md` — Claude Code skill that teaches `loop`; `scripts/install-skill.mjs` drops it into `~/.claude/skills/`.
-- `site/` — static landing page (+ `api/downloads.js` = Vercel download counter).
-- `scripts/` — `rebrand-electron` (dev), `gen-icon`, `install-skill`, `dev-server` (serves site + live counter).
+- `bin/loop` + `bin/loop.cmd` — packaged-app CLI shim: runs bundled `cli.mjs` via the app's own Electron (`ELECTRON_RUN_AS_NODE`), so no system Node/repo needed. First launch (`maybeInstallCli()`) offers PATH install.
+- `skill/loop/SKILL.md` — Claude Code skill teaching `loop`; `scripts/install-skill.mjs` installs it. · `site/` — landing page. · `scripts/` — dev tooling.
 
 ## Engine internals & gotchas (the CLI↔browser marriage)
-The CLI never talks to Electron directly — it speaks **CDP** to the browser's `localhost:9222` via Playwright's `connectOverCDP`. Several non-obvious wirings make this work; touch them carefully:
-- **`main.js:346` loads `about:blank` into the root window** (`win.webContents.loadURL`) *on purpose* — without it the root CDP target never initializes and `connectOverCDP` hangs/times out. Don't remove it.
-- **`activePage()` (`lib.mjs`) deliberately skips `about:*` and `/ui/toolbar.html`** so the CLI drives the **content** WebContentsView, not the glass toolbar. The window is multi-view (toolbar view + one content view per tab); "the active page" = the visible content tab.
-- **`app.userAgentFallback` (`main.js:16`) is forced to a clean Chrome UA** (no Electron/app-name tokens) — UA-sniffing sites (WhatsApp Web, etc.) reject the default Electron UA with "update your browser." Keep it Chrome-shaped.
-- **Theme is owned by main and pushed into every view**, not stored in `file://` localStorage (which silently failed). New tabs inherit it via `loadFile(HOME, {query:{theme}})`; persisted to `loop-theme.json` in `userData`.
-- **`findInput`/`findClickable` poll then self-heal** (`healFind`): exact role/label first, then a deterministic fuzzy word-overlap match — this is the free "rung 1" recovery before any LLM is involved.
-- **No test suite.** Verification = run a recipe live against the running app (`npm start` first) and watch it. There is no lint/build-check step; `node cli.mjs <verb>` is the smoke test.
+The CLI speaks **CDP** to `localhost:9222` via Playwright `connectOverCDP`. Non-obvious wirings — touch carefully:
+- **`main.js` loads `about:blank` into the root window** on purpose — without it the root CDP target never initializes and `connectOverCDP` hangs. Don't remove.
+- **`activePage()` skips `about:*` and `/ui/toolbar.html`** so the CLI drives the **content** view, not the glass toolbar.
+- **`app.userAgentFallback` forced to clean Chrome UA** — UA-sniffing sites (WhatsApp, etc.) reject the default Electron UA. Keep it Chrome-shaped.
+- **`findInput`/`findClickable` poll then self-heal** (`healFind`): exact role/label, then deterministic fuzzy word-overlap — the free "rung 1" before any LLM. On a heal they **auto-capture** `target→resolved` (gitignored per-domain JSON) and try that first next run — so the heal cost is paid once.
+- **Native OS dialogs are INVISIBLE to CDP — the #1 "stuck and can't see why" trap.** `loop shot`/`snapshot` see only the web page; a file picker / OS confirm sits *outside* it. **Diagnosis ladder:** (1) DOM — `read`/`snapshot`; (2) `loop shot` (web pixels); (3) **`loop shot-os`** (OS screenshot, LB frontmost — catches native dialogs). **Close** a native modal with **`loop os-dismiss`**. **Avoid** opening one on upload → intercept the chooser: `Promise.all([page.waitForEvent("filechooser"), <trigger>])` → `fc.setFiles(path)` (never `mouse.click` an upload button).
+- **No test suite.** Verify = run a recipe live and watch; `node cli.mjs <verb>` is the smoke test.
 
 ## CLI
-`loop open <url>` · `fill "<label>" "<text>"` · `click "<text>"` · `press <Key>` · `read` · `snapshot`
-(page as role/name tree — the brain's eyes) · `shot [name]` (screenshot for vision fallback) ·
-`click-xy <x> <y>` (vision fallback click) · `author <name> "<goal>"` · `scrape-members "<group>"` ·
-`run <recipe> key=value …` · `recipes` (list) · `setup` (install Claude skill + start) · `start` (background launch) · `privacy` (show local data + no-upload guarantee).
-**Auto-launch (important):** any `loop` command now **auto-starts Loop Browser in the background** (detached) if it isn't running — `connect()` in `lib.mjs` calls `ensureBrowser()`. So you DON'T need `npm start` first; just run the command. `loop start` launches without acting and returns immediately (no stuck terminal, no Ctrl+C — quit by closing the window).
+`open <url>` · `fill "<label>" "<text>"` · `click "<text>"` · `press <Key>` · `read` · `snapshot` (a11y tree = the brain's eyes) · `shot [name]` (web screenshot) · `click-xy <x> <y>` (vision fallback) · `shot-os [name]` (**OS** screenshot — native dialogs) · `os-dismiss [n]` (close native modal) · `author <name> "<goal>"` · `scrape-members "<group>"` · `run <recipe> key=value …` · `serve <recipe> [pantry=<dir>] [force=1]` (Expediter: next ticket → dedup/ledger → cook) · `recipes` · `setup` · `start` · `privacy`.
+**Auto-launch:** any `loop` command auto-starts Loop Browser in the background if down (`ensureBrowser()`); no `npm start` needed. `loop start` launches and returns.
 
 ## Recipe format
 ```json
@@ -54,35 +66,30 @@ The CLI never talks to Electron directly — it speaks **CDP** to the browser's 
   "steps": [ { "do":"open","url":"…" }, { "do":"fill","target":"<label>","value":"{group}" } ] }
 ```
 Step verbs: `open · fill · click · press · wait · assert · read · snapshot · extract · click-xy · scrape-members · open-chat`.
-(`open-chat {name}` = resilient contact open: full match → "mini match" fallback — search the full name, and if no result appears, shorten the search term and click the row that best matches the full name by word-overlap; tolerates extra/misspelled middle names. Used by `recipes/whatsapp-send.json`.)
-**Target by role/label/text, never coordinates** (`click-xy` = vision fallback only). Use `{placeholders}` for ingredients.
+**Target by role/label/text, never coordinates** (`click-xy` = vision fallback only). Use `{placeholders}` for ingredients. `recipes/local/` = private overlay (real URLs/paths), shadows shipped templates; a `ticket` block + `loop serve` cooks from a pantry of tickets.
 
 ## Authoring & healing (the brain's two jobs)
-- **Author:** `loop open` → `loop snapshot` (read the real role/name labels) → write `recipes/<name>.json` → `loop run` to test. (`loop author` captures a brief + scaffolds the file.)
-- **Heal:** on a break the Guardian writes `runs/<recipe>-incident.json` (failing step + live a11y snapshot). Find the element there, patch that step's `target` in `recipes/<name>.json`, bump `version`, re-run.
+- **Author:** `loop open` → `loop snapshot` (read real labels) → write `recipes/<name>.json` → `loop run` to test. (`loop author` scaffolds + captures a brief.) Read the site's cuisine pack first.
+- **Heal:** on a break the Guardian writes `runs/<recipe>-incident.json` (failing step + live a11y snapshot). Find the element there, patch that step's `target`, bump `version`, re-run.
 
 ## The git boundary (CRITICAL)
-- **Ships:** engine (`main/cli/lib/ui`), `recipes/` (method only — placeholder ingredients, **no personal data**), `skill/`, `site/`, docs.
-- **Never ships (gitignored):** `.loop-profile/` (login = the key), `dishes/` + `*-members.csv` (output), `runs/` (screenshots), `.claude/`, the DMG/EXE. *The recipe travels; the meal, the pantry, and the key stay home.* `grep` for personal data before committing.
-- **HARD RULE — no secret/private data ever ships to git, npm, or the website** (passwords, tokens, keys, sessions, private recipes). Enforced by 4 layers; **never weaken them:** `.gitignore` → npm `files` allowlist (`recipes/*.json` — NEVER `recipes/`, which would sweep in `recipes/local/`) → `.npmignore` → **the publish guard `scripts/check-no-secrets.mjs`** (`prepublishOnly`, gates manual `npm publish` AND CI; aborts if any secret/private file would ship). A real leak was caught here once — keep all four intact.
+- **Ships:** engine (`main/cli/lib/ui` + `porter`/`servicelog`), `recipes/*.json` (method only), **`site-memories/*.md` (generic site MODELS — how a public site works; scrubbed of personal data)**, `skill/`, `site/`, docs.
+- **Never ships (gitignored):** `.loop-profile/` (login = the key), `dishes/` (incl. `service-log.json` — work record), `runs/`, `recipes/local/` + **`site-memories/local/`** (our specifics: companyId, paths, account state, real names), `.claude/`, DMG/EXE. *Recipe + site-model travel; meal, pantry, key, our specifics stay home.* `grep` for personal data before committing.
+- **HARD RULE — no secret/private data ever ships** (passwords, tokens, keys, sessions, private recipes). 4 layers, never weaken: `.gitignore` → npm `files` allowlist (`recipes/*.json`, NEVER `recipes/`) → `.npmignore` → publish guard `scripts/check-no-secrets.mjs` (`prepublishOnly`, gates manual + CI). A real leak was caught here once.
 
 ## Hard rules
-- **Only the human logs in** — never type credentials. If logged out, stop and ask.
+- **Only the human logs in** — never type credentials. If logged out, stop & ask.
 - **Stop & ask** on uncertainty or anything destructive/irreversible (delete, pay, mass-send).
-- **Human-like & watchable:** deliberate pacing; run/train the cook **one step at a time, observing each** — never blast batches or reopen the app in a loop.
+- **Human-like & watchable:** deliberate pacing; cook one step at a time, observing each — never blast batches or reopen the app in a loop.
+- (Per-platform operating rules — e.g. LinkedIn connection-request throttle/health — live in that site's cuisine pack.)
 
 ## Run / dev
-- `npm start` — launch Loop Browser (CDP :9222). (Not strictly needed anymore — `loop` auto-launches it — but still the dev way to run the app.)
-- `node cli.mjs <args>` (or `loop …` after `npm link`).
-- `npm run site` — serve the landing site **with a working download counter** at :8099.
-- `npm run dist` / `dist:win` — build the macOS DMG / Windows EXE (`dist:win:signed` = Azure Trusted Signing, see `SIGNING.md`).
+- `npm start` — launch Loop Browser (CDP :9222); not required (`loop` auto-launches) but the dev way.
+- `node cli.mjs <args>` (or `loop …` after `npm link`). · `npm run site` — landing site + counter at :8099. · `npm run dist` / `dist:win` — mac DMG / Windows EXE.
 
-## Distribution (SHIPPED — published on npm)
-- **`loop-browser` is published on npm.** Headline install = **`npx loop-browser setup`** (installs the Claude skill + starts the browser) — then the user just talks to Claude. `npm i -g loop-browser` puts `loop`/`loop-browser` on PATH. `npx loop-browser` = background launch. This is the no-installer path (also dodges Windows SmartScreen/SAC). See `README.md`.
-- **`electron` is in `peerDependencies` (+ devDeps)** — electron-builder forbids it in `dependencies`, but npm 7+ auto-installs the peer for npx consumers. Don't move it to `dependencies` (breaks the installer build).
-- **Publishing:** a Trusted-Publishing CI workflow exists (`.github/workflows/publish.yml`, tag-triggered) BUT it's currently failing — GitHub isn't granting the workflow `id-token: write` (an account/org Actions setting). Until that's fixed, releases are **manual**: bump version, then `npm publish` with a granular bypass-2FA token created+revoked via LB (account has no 2FA). The `prepublishOnly` guard runs either way.
+## Distribution (SHIPPED — on npm)
+- `loop-browser` published. Headline install = **`npx loop-browser setup`** (skill + start). `npm i -g loop-browser` puts `loop` on PATH.
+- **`electron` in `peerDependencies`** (electron-builder forbids it in `dependencies`); npm 7+ auto-installs for npx. Don't move it.
+- **Publishing is manual** (Trusted-Publishing CI fails — `id-token` not granted): bump version, `npm publish` with a bypass-2FA token. `prepublishOnly` guard runs either way.
 
-## Product direction (planned, not built)
-Closed/proprietary app (sealed engine via Electron fuses + signing) but **unlimited usage** (any site/dish, no throttle); cross-platform (mac DMG + win EXE from one codebase via CI); a **recipe ecosystem** (official + user-authored, shareable because recipes are method-only).
-
-> Full history, decisions, and per-recipe notes live in the auto-memory (`MEMORY.md` index).
+> Full history, decisions, per-recipe + per-cuisine notes live in auto-memory (`MEMORY.md`) and `site-memories/`.
