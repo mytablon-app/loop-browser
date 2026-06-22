@@ -50,6 +50,8 @@ loop recipes
 
 > Tip: `npm link` once, then use `loop …` anywhere instead of `node cli.mjs …`.
 
+> **Want a fully-branded app?** Running from source, macOS labels the process *Electron* (Activity Monitor, Dock) — cosmetic, and normal for source-run Electron apps; in-app it already says Loop Browser. For a polished `Loop Browser.app` renamed everywhere, build it once with `npm run dist` (mac `.dmg`/app) or `npx electron-builder --dir` (unpacked app in `build/`), then launch that instead of `npm start`. Optional — `npm start` is the simplest path.
+
 Drive the active tab from another terminal:
 
 ```bash
