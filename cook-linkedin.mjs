@@ -235,7 +235,7 @@ while (posted < MAX) {
     console.error(`✗ FAIL: ${t.name} — ${e.message.slice(0, 140)}`);
     recordDish(DISH, { target: t.name, slug: t.slug, file: t.file, status: "failed", error: e.message.slice(0, 140) });
     // Capture the stuck state, then just tidy the composer — stay on the posts page (no /feed/ bounce).
-    try { ({ page } = await activePage(b)); await page.screenshot({ path: `runs/cook-fail-${t.slug || posted}.png` }).catch(() => {}); await tidy(page); } catch {}
+    try { ({ page } = await activePage(b)); await page.screenshot({ path: `runs/scratch/cook-fail-${t.slug || posted}.png` }).catch(() => {}); await tidy(page); } catch {}
     if (consec >= MAX_CONSEC_FAILS) { console.error(`\n■ STOPPED — ${consec} consecutive fails`); break; }
     await sleep(10000);
   }
