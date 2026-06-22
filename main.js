@@ -9,6 +9,7 @@ const { execFile } = require("child_process");
 const net = require("net");
 
 app.setName("Loop Browser");
+process.title = "Loop Browser";   // process listings (the main process) say Loop Browser, not "Electron"
 
 // Per-instance isolation. LOOP_CDP_PORT sets the CDP port (default 9222); LOOP_PROFILE_DIR sets the
 // data/login dir. Give each instance a DISTINCT profile dir + port to run several independent browsers
@@ -41,6 +42,8 @@ app.userAgentFallback =
 const TOOLBAR_H = 88; // 36 tab strip + 52 address row (see ui/toolbar.html)
 const HOME = path.join(__dirname, "ui", "home.html");
 const VERSION = require("./package.json").version;
+// "About Loop Browser" instead of "About Electron" (the menu/About panel when running unpackaged).
+app.setAboutPanelOptions({ applicationName: "Loop Browser", applicationVersion: VERSION, version: "" });
 const DOWNLOAD_URL = "https://loop-browser.vercel.app"; // where app users grab the new DMG/EXE
 const ICON = path.join(__dirname, "assets", "loop-dock-icon.png");
 const DARK = "#0a0e1a";
