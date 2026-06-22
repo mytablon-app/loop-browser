@@ -1,0 +1,19 @@
+{
+  "name": "linkedin-company-post",
+  "title": "Post to a LinkedIn company page",
+  "description": "Shippable TEMPLATE (method only, no personal data). The spine: open the company admin composer and stage one ticket's caption. The full image + Voyager photo-tag + verified-post flow is the `cook-linkedin.mjs` driver, configured at run time via env: LOOP_LI_COMPANY_ID=<your company id> and LOOP_PANTRY=<your ticket folder>. Put your real company URL / pantry path in recipes/local/ (gitignored) — never here.",
+  "version": "1.0.0",
+  "ingredients": {
+    "companyUrl": "https://www.linkedin.com/company/<companyId>/admin/page-posts/published/",
+    "caption": "<post text>",
+    "image": "<image path>",
+    "tagUrl": "<person /in/ url>"
+  },
+  "steps": [
+    { "do": "open", "url": "{companyUrl}" },
+    { "do": "wait", "ms": 8000 },
+    { "do": "click", "target": "Start a post" },
+    { "do": "wait", "ms": 3000 },
+    { "do": "fill", "target": "Text editor for creating content", "value": "{caption}" }
+  ]
+}

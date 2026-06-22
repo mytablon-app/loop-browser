@@ -75,7 +75,7 @@ export async function fetchProfile(page, profileUrl) {
 //   • skip a file with no LINKEDIN URL (this is also what drops the _REPORT/_SKIPPED files)
 //   • skip anything already served (slug in doneSlugs)
 // Returns a ready ingredient set, or null when the pantry is drained.
-export function pickNextTicket(folder, doneSlugs = new Set()) {
+export function pickNextTicket(folder, done = new Set()) {
   const files = readdirSync(folder)
     .filter((f) => f.endsWith(".txt") && !f.startsWith("00-"))
     .sort();
@@ -83,7 +83,9 @@ export function pickNextTicket(folder, doneSlugs = new Set()) {
     const parsed = parseTxt(readFileSync(path.join(folder, file), "utf8"));
     if (!parsed.url) continue;
     const slug = slugOf(parsed.url);
-    if (slug && doneSlugs.has(slug)) continue;
+    // Dedup by slug AND by file. A ticket whose URL isn't a /in/ profile (e.g. a /company/ page) has
+    // slug=null — without the file check it could never be marked done and would re-post forever.
+    if ((slug && done.has(slug)) || done.has(file)) continue;
     const img = path.join(folder, file.replace(".txt", ".jpg"));
     return {
       file,

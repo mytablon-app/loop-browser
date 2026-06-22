@@ -118,7 +118,7 @@ if (cmd === "privacy" || cmd === "data") {
     console.log(`     ${dim("└ " + it.note)}`);
   }
   console.log("\n   " + b("Network"));
-  console.log(dim("     • Only localhost:9222 (CLI ↔ your browser) and the sites YOU drive,"));
+  console.log(dim(`     • Only localhost:${process.env.LOOP_CDP_PORT || "9222"} (CLI ↔ your browser) and the sites YOU drive,`));
   console.log(dim("       inside YOUR logged-in session."));
   console.log(dim("     • No telemetry · no accounts · no cloud · nothing phones home.\n"));
   console.log(cyn("   The recipe travels; the meal, the pantry, and the key stay home.") + "\n");
@@ -139,7 +139,7 @@ if (cmd === "setup") {
 // "loop start" — start the browser in the BACKGROUND and return (keep working).
 if (cmd === "start" || cmd === "up") {
   if (await isBrowserUp()) {
-    console.log("✓ Loop Browser is already running (listening on :9222).");
+    console.log(`✓ Loop Browser is already running (listening on :${process.env.LOOP_CDP_PORT || "9222"}).`);
   } else {
     process.stdout.write("· starting Loop Browser… ");
     await ensureBrowser();

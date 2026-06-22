@@ -292,7 +292,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <p class="rv d3" style="font-size:clamp(1.1rem,2.2vw,1.45rem);font-weight:650;letter-spacing:-.01em;margin:0 auto 14px;max-width:620px">A <span class="g">safe</span> tool for <span class="cc"><svg class="cc-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1L12.8 8.9L17.5 2.5L14.3 9.7L21.5 6.5L15.1 11.2L23 12L15.1 12.8L21.5 17.5L14.3 14.3L17.5 21.5L12.8 15.1L12 23L11.2 15.1L6.5 21.5L9.7 14.3L2.5 17.5L8.9 12.8L1 12L8.9 11.2L2.5 6.5L9.7 9.7L6.5 2.5L11.2 8.9Z"/></svg>Claude&nbsp;Code</span> users.</p>
     <p class="lede rv d4">Turn repeating web tasks into <strong>bots</strong>. Write once; replay forever.<br><strong class="g">It's free!</strong></p>
     <div class="cta rv d5">
-      <a href="#download" class="btn btn-primary">↓ Download Loop<span class="btn-beta">beta</span></a>
+      <a href="#download" class="btn btn-primary">Get Loop ↓<span class="btn-beta">beta</span></a>
     </div>
     <div class="rv d6"><span class="dl-count" id="dl-count" style="display:none"><span class="pulse"></span><b id="dl-count-n">—</b>&nbsp;downloads</span></div>
   </div>
@@ -421,9 +421,9 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <h2>Your first dish, in five steps.</h2>
     <p class="sub">What each piece is, and where to get it.</p>
     <div class="steps">
-      <div class="step"><div class="n">1</div><h3>Get Loop</h3><p>The kitchen — the glass browser you'll command. Have Node? <code>npx loop-browser</code>. Otherwise grab the desktop app.</p><a href="#download">Install options →</a></div>
+      <div class="step"><div class="n">1</div><h3>Get Loop</h3><p>The kitchen — the glass browser you'll command. <code>git clone</code> the repo, <code>npm install</code>, and you're set.</p><a href="#download">How to install →</a></div>
       <div class="step"><div class="n">2</div><h3>Get <span class="cc">Claude Code</span></h3><p>The chef's brain — the LLM that writes &amp; heals recipes, on your own subscription.</p><a href="https://claude.com/claude-code" target="_blank" rel="noopener">claude.com/claude-code →</a></div>
-      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>The command line you cook from — <code>loop run</code>, <code>loop author</code>. Comes with Loop: bundled in the app, or on your PATH after <code>npm i -g loop-browser</code>.</p></div>
+      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>The command line you cook from — <code>loop run</code>, <code>loop author</code>. On your PATH after <code>npm link</code> (or run <code>node cli.mjs</code>).</p></div>
       <div class="step"><div class="n">4</div><h3>Connect</h3><p>Launch Loop — it opens and listens on a local port. Every <code>loop</code> command (yours or Claude's) connects to it instantly. No config, no cloud.</p></div>
       <div class="step"><div class="n">5</div><h3>Cook</h3><p>Run a dish — <code>loop run hn-top</code> — or have the chef write one with <code>loop author</code>. Watch every step.</p></div>
     </div>
@@ -435,34 +435,26 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <div class="download">
       <div class="eyebrow" style="color:var(--cyan)">Ready when you are</div>
       <h2>Get Loop Browser</h2>
-      <p class="sub center" style="margin-top:6px">Two ways to install — pick whichever feels easier.</p>
-      <div class="get-grid">
+      <p class="sub center" style="margin-top:6px">Loop runs <strong>from the repo</strong> — clone it, install once, and you're set.</p>
+      <div class="get-grid" style="grid-template-columns:1fr;max-width:720px;margin-inline:auto">
 
         <div class="get-card">
-          <div class="get-num">1</div>
-          <div class="get-tag">★ Easiest · for everyone</div>
-          <h3>Download the app</h3>
-          <div class="cta" style="margin-top:16px">
-            <a id="dl-primary" href="#" class="btn btn-primary">↓ Download Loop</a>
-          </div>
-          <div id="dl-meta" class="dl-meta">Mac &amp; Windows</div>
-          <p id="dl-other" class="note" style="margin-top:10px"></p>
-          <p id="dl-note" class="note">Open it like any app.</p>
-        </div>
-
-        <div class="get-card">
-          <div class="get-num">2</div>
-          <div class="get-tag">If you use a terminal</div>
-          <h3>One command</h3>
+          <div class="get-tag">★ Clone &amp; run · the way in</div>
+          <h3>Get it from GitHub</h3>
           <div class="cmd-row">
-            <span class="cmd-label">Terminal / PowerShell</span>
-            <div class="cmd"><code>npx loop-browser</code><button class="copy" data-copy="npx loop-browser" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+            <span class="cmd-label">Clone</span>
+            <div class="cmd"><code>git clone https://github.com/mytablon-app/loop-browser.git</code><button class="copy" data-copy="git clone https://github.com/mytablon-app/loop-browser.git" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
           </div>
           <div class="cmd-row">
-            <span class="cmd-label">In Claude Code</span>
-            <div class="cmd"><code>!npx loop-browser</code><button class="copy" data-copy="!npx loop-browser" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+            <span class="cmd-label">Install + link</span>
+            <div class="cmd"><code>cd loop-browser &amp;&amp; npm install &amp;&amp; npm link</code><button class="copy" data-copy="cd loop-browser && npm install && npm link" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
           </div>
-          <p class="note" style="margin-top:14px">Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a>.</p>
+          <div class="cmd-row">
+            <span class="cmd-label">Set up</span>
+            <div class="cmd"><code>loop setup</code><button class="copy" data-copy="loop setup" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+          </div>
+          <p class="note" style="margin-top:14px">Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> + git. <code>npm install</code> pulls Electron on first run.</p>
+          <p class="note">It's a <b>living</b> library — <code>git pull</code> for the latest recipes &amp; fixes, and send your own back.</p>
         </div>
 
       </div>
@@ -499,48 +491,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
   },{threshold:.3,rootMargin:'0px 0px -8% 0px'});
   document.querySelectorAll('.chapter').forEach(c=>io.observe(c));
 
-  // OS-aware download: show the visitor's platform; offer the other as a fallback.
-  // Files are hosted as GitHub Release assets (stable "latest" URL — no edit needed per release).
-  // The asset names are fixed by electron-builder artifactName (Loop-Browser-mac.dmg / -win.exe).
-  const REL='https://github.com/mytablon-app/loop-browser/releases/latest/download';
-  const FILES={mac:REL+'/Loop-Browser-mac.dmg', win:REL+'/Loop-Browser-win.exe'};
-  const ua=navigator.userAgent;
-  // Mobile FIRST — iPadOS reports a Mac UA, so iPhone/iPad would otherwise be served a .dmg.
-  const isMobile=/iPhone|iPad|iPod|Android/i.test(ua);
-  const os = isMobile ? 'mobile'
-    : (/Windows|Win32|Win64/i.test(ua) ? 'win'
-    : (/Mac/i.test(ua) ? 'mac' : 'other'));
-  const $p=document.getElementById('dl-primary'), $m=document.getElementById('dl-meta'),
-        $o=document.getElementById('dl-other'), $n=document.getElementById('dl-note');
-  if(os==='win'){
-    $p.textContent='↓ Download for Windows'; $p.href=FILES.win;
-    $m.textContent='Windows 10/11 · 64-bit · .exe';
-    $o.innerHTML='';
-    $n.innerHTML='First open: <strong>More info → Run anyway</strong> if Windows warns (early build).';
-  } else if(os==='mac'){
-    $p.textContent='↓ Download for macOS'; $p.href=FILES.mac;
-    $m.textContent='macOS · Apple Silicon & Intel · .dmg';
-    $o.innerHTML='';
-    $n.innerHTML='First open: <strong>right-click → Open</strong> (early build).';
-  } else if(os==='mobile'){
-    // No download/terminal on a phone — replace both install cards with a note.
-    const grid=document.querySelector('.get-grid');
-    if(grid) grid.innerHTML='<p class="sub center" style="grid-column:1/-1;margin:0">Loop Browser is a <b>desktop tool</b> — open this page on your <b>Mac</b> or <b>Windows</b> computer to set it up. (It needs a real browser window and a terminal, which phones don\'t have.)</p>';
-  } else {
-    $p.textContent='↓ Download'; $p.href='#';
-    $m.textContent='Mac &amp; Windows';
-    $o.innerHTML='Pick your platform: <a href="'+FILES.mac+'">macOS (.dmg)</a> · <a href="'+FILES.win+'">Windows (.exe)</a>';
-  }
-  if(os!=='mobile') $p.insertAdjacentHTML('beforeend',' <span class="btn-beta">beta</span>');
-
-  // Download counter — REAL persisted stats via /api/downloads (Vercel + KV).
-  // Each click on a Mac/Win download = +1. Locally/pre-deploy the API is absent → pill shows "—".
-  const CN=document.getElementById('dl-count-n');
-  const fmt=n=>Number(n).toLocaleString();
-  (async()=>{ try{ const r=await fetch('/api/downloads'); if(r.ok){ const d=await r.json(); if(d&&d.count!=null){ CN.textContent=fmt(d.count); document.getElementById('dl-count').style.display='inline-flex'; } } }catch(_){} })();
-  async function bumpDownload(){ try{ const r=await fetch('/api/downloads',{method:'POST'}); if(r.ok){ const d=await r.json(); if(d&&d.count!=null) CN.textContent=fmt(d.count); } }catch(_){} }
-  $p.addEventListener('click',bumpDownload);
-  $o.addEventListener('click',e=>{ if(e.target.closest('a')) bumpDownload(); });
+  // (Install is git-clone-only now — no OS-aware download / download-counter JS.)
 
   // Copy buttons on command snippets — copy to clipboard + a brief green check
   const CHECK='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';

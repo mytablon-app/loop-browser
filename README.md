@@ -26,21 +26,17 @@ It's **site-agnostic** — the engine doesn't know or care which website it's dr
 
 ## Quick start
 
-One command sets everything up — installs the Claude Code skill and starts the browser:
+Loop Browser runs **from the repo** — clone it, install once, and you're set:
 
 ```bash
-npx loop-browser setup
+git clone https://github.com/mytablon-app/loop-browser.git
+cd loop-browser
+npm install        # pulls Electron + Playwright (first run only)
+npm link           # puts the `loop` command on your PATH
+loop setup         # installs the Claude Code skill + starts the browser
 ```
 
-Then you're done with the terminal — **just talk to Claude Code** ("scrape this group", "post this"). Claude starts/drives the browser for you; it runs in the **background** so nothing gets stuck attached to a terminal.
-
-Prefer the `loop` command on your PATH (so you can drive it by hand too)?
-
-```bash
-npm i -g loop-browser && loop setup
-```
-
-Then any command auto-starts the browser if it isn't running:
+Then you're done with the terminal — **just talk to Claude Code** ("scrape this group", "post this"). Claude starts/drives the browser for you; it runs in the **background** so nothing gets stuck attached to a terminal. Any `loop` command auto-starts the browser if it isn't running:
 
 ```bash
 loop start                 # just open the window (background, returns immediately)
@@ -48,14 +44,7 @@ loop open https://example.com
 loop recipes
 ```
 
-> On Windows this also sidesteps Smart App Control, which blocks the unsigned `.exe` installer.
-
-Prefer the desktop app? Grab the installer at **[loop-browser.vercel.app](https://loop-browser.vercel.app)** (macOS `.dmg` / Windows `.exe`). Or clone and run from source:
-
-```bash
-npm install        # downloads Electron; first run only
-npm start          # launches the Loop Browser window (CDP on :9222)
-```
+**Why clone instead of an installer?** The repo is the *living* method library — `git pull` gets you the latest recipes, cuisine packs, and engine fixes, and you can contribute your own heals back; a frozen download can't do either. Stay current with `git pull && npm install`.
 
 **First run — log in once (your key).** In the Loop Browser window, go to the site you want to automate and sign in normally — e.g. type `web.whatsapp.com` in the address bar and scan the QR with your phone. Your session is saved to a **local, gitignored** profile (`.loop-profile/`), so you stay logged in across launches. Nobody else ever sees it.
 

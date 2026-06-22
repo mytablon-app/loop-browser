@@ -11,7 +11,10 @@ import path from "path";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const CDP_URL = "http://localhost:9222";
+// CDP port is per-instance: a terminal sets LOOP_CDP_PORT (+ LOOP_PROFILE_DIR) to target its own
+// browser. launchDetached's spawn inherits process.env, so the launched Electron binds the same port.
+const CDP_PORT = process.env.LOOP_CDP_PORT || "9222";
+const CDP_URL = `http://localhost:${CDP_PORT}`;
 const APP_ROOT = fileURLToPath(new URL(".", import.meta.url)); // package root (has main.js)
 const require = createRequire(import.meta.url);
 
@@ -54,6 +57,7 @@ export async function ensureBrowser({ timeoutMs = 30000 } = {}) {
 
 // Where Electron stores this app's data (logins/cookies = "the key"), per OS.
 export function profileDir() {
+  if (process.env.LOOP_PROFILE_DIR) return path.resolve(process.env.LOOP_PROFILE_DIR);
   const name = "Loop Browser";
   if (process.platform === "darwin") return path.join(homedir(), "Library", "Application Support", name);
   if (process.platform === "win32") return path.join(process.env.APPDATA || path.join(homedir(), "AppData", "Roaming"), name);
@@ -106,7 +110,7 @@ export async function connect({ autostart = true } = {}) {
       await sleep(400);
     }
   }
-  throw new Error("Could not reach Loop Browser on :9222. Try `loop start`.");
+  throw new Error(`Could not reach Loop Browser on :${CDP_PORT}. Try \`loop start\`.`);
 }
 
 // REQUIREMENT 1 + 2: reuse the single real tab, never open new ones, keep it visible.
@@ -152,6 +156,34 @@ export async function activePage(browser) {
     );
   }
   return { page, tabCount: pages.length, contentCount: content.length };
+}
+
+// Pick a tab by URL WITHOUT stealing focus — the key to running two automations on two tabs at once.
+// activePage() bringToFront()s (every caller fights over the front tab); pageFor() leaves focus alone,
+// so a background WhatsApp cron and a foreground LinkedIn cook coexist. Background tabs are READABLE and
+// driveable via in-page dispatch (el.click) + keyboard — but NOT via locator.click() (actionability fails
+// on a hidden WebContentsView). Use bgClick/bgType below for background interaction.
+export async function pageFor(browser, pattern, { front = false } = {}) {
+  const re = pattern instanceof RegExp ? pattern : new RegExp(pattern);
+  const page = browser.contexts()[0].pages()
+    .find((p) => re.test(p.url()) && !p.url().includes("/ui/toolbar.html"));
+  if (!page) throw new Error(`pageFor: no open tab matching ${re} — open it in Loop Browser first`);
+  if (front) await page.bringToFront();
+  if (!page.__loopDialogs) {
+    page.__loopDialogs = true;
+    page.on("dialog", (d) => (d.type() === "beforeunload" ? d.accept() : d.dismiss()).catch(() => {}));
+  }
+  return page;
+}
+// Background-safe click: dispatch the DOM click on the element a locator resolves to. Works on a
+// non-fronted tab where locator.click() times out on actionability. Pass a Playwright locator.
+export async function bgClick(locator) { await locator.evaluate((el) => el.click()); }
+// Background-safe type: focus the element, clear it, then type via CDP keyboard (works unfronted).
+export async function bgType(page, locator, text) {
+  await locator.evaluate((el) => el.focus());
+  await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+  await page.keyboard.press("Backspace");
+  if (text) await page.keyboard.type(String(text), { delay: 40 });
 }
 
 // Draw a red box around the element BEFORE acting, so you SEE where it acts.

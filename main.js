@@ -10,16 +10,22 @@ const net = require("net");
 
 app.setName("Loop Browser");
 
-// Single instance only. A second launch (e.g. `npx loop-browser` while the app is
-// already open) would collide on CDP :9222 ("bind() failed: Address already in
-// use") and fail to start its control server. So: only the lock-holder claims
-// :9222; a losing instance never attempts the bind — it just focuses the running
-// window and quits.
+// Per-instance isolation. LOOP_CDP_PORT sets the CDP port (default 9222); LOOP_PROFILE_DIR sets the
+// data/login dir. Give each instance a DISTINCT profile dir + port to run several independent browsers
+// side by side — one per account/site, each commanded by its own terminal, no intersection. The
+// single-instance lock is keyed to userData, so a distinct profile dir is what lets two instances
+// coexist (same profile always single-locks, regardless of port). Set userData BEFORE the lock check.
+const CDP_PORT = process.env.LOOP_CDP_PORT || "9222";
+if (process.env.LOOP_PROFILE_DIR) app.setPath("userData", path.resolve(process.env.LOOP_PROFILE_DIR));
+
+// Single instance per profile. A second launch on the SAME profile would collide on the CDP port
+// ("bind() failed: Address already in use"); only the lock-holder claims the port, a loser just
+// focuses the running window and quits. Distinct profile + port → independent instances.
 const gotInstanceLock = app.requestSingleInstanceLock();
 if (!gotInstanceLock) {
   app.quit();
 } else {
-  app.commandLine.appendSwitch("remote-debugging-port", "9222"); // CLI↔browser marriage
+  app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT); // CLI↔browser marriage
   app.on("second-instance", () => {
     const w = win && !win.isDestroyed() ? win : BrowserWindow.getAllWindows()[0];
     if (w) { if (w.isMinimized()) w.restore(); w.show(); w.focus(); }
@@ -266,9 +272,9 @@ const CHECKS = [
     run: async () => ({ status: "ok", detail: "Chrome " + process.versions.chrome.split(".")[0] }),
   },
   {
-    id: "bridge", label: "CLI bridge · :9222", required: true,
+    id: "bridge", label: "CLI bridge · :" + CDP_PORT, required: true,
     run: async () =>
-      (await portOpen(9222))
+      (await portOpen(Number(CDP_PORT)))
         ? { status: "ok", detail: "connected" }
         : { status: "fail", detail: "not reachable" },
   },

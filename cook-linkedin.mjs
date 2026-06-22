@@ -178,14 +178,23 @@ async function cookOne(page, t) {
   // GUARD before the irreversible Post: make sure a human/auto-process hasn't taken
   // over (navigated away, switched tabs, closed our tab). If so, abort — don't click.
   await guard(page, startPage);
-  // publish + verify
+  // publish + verify on LinkedIn's "Post successful." confirmation (NEW: LinkedIn now shows a
+  // "Post successful / Try Premium Page" upsell modal after every post). That modal is the reliable
+  // success signal — and it MUST be dismissed ("No thanks"), or it stays up and blocks the next post
+  // (this is what false-negatived verify and caused the cascade of failures).
   await post.click();
   let ok = false;
-  try { await Promise.race([
-    page.locator('[role="dialog"]').waitFor({ state: "hidden", timeout: 25000 }),
-    page.waitForFunction(() => location.search.includes("share"), { timeout: 25000 }),
-    page.locator('[data-test-artdeco-toast-item]').first().waitFor({ state: "visible", timeout: 25000 }),
-  ]); ok = true; } catch { ok = false; }
+  try {
+    await page.waitForFunction(() => /Post successful/i.test(document.body.innerText || ""), { timeout: 30000 });
+    ok = true;
+  } catch { ok = false; }
+  // dismiss the success/upsell modal so the next post can start cleanly
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll("button")].find((b) => /^No thanks$/i.test((b.textContent || "").trim()))
+      || [...document.querySelectorAll("button")].find((b) => /dismiss|close/i.test(b.getAttribute("aria-label") || ""));
+    if (btn) btn.click();
+  }).catch(() => {});
+  await sleep(1500);
   return { ok, tagged };
 }
 
@@ -193,9 +202,11 @@ const b = await connect();
 let posted = 0, consec = 0;
 const attempted = new Set();
 while (posted < MAX) {
-  const done = new Set([...servedSet(DISH, "slug"), ...attempted]);
+  // Dedup on BOTH slug (historical entries) and file (always present — survives null slugs).
+  const done = new Set([...servedSet(DISH, "slug"), ...servedSet(DISH, "file"), ...attempted]);
   const t = pickNextTicket(PANTRY, done);
   if (!t) { console.log("\n✓ PANTRY DRAINED"); break; }
+  attempted.add(t.file);              // file is always present; slug is null for company URLs
   if (t.slug) attempted.add(t.slug);
   console.log(`\n=== COOK ${posted + 1}: ${t.name} (${t.file}) ===`);
   let page;
@@ -223,7 +234,8 @@ while (posted < MAX) {
     consec++;
     console.error(`✗ FAIL: ${t.name} — ${e.message.slice(0, 140)}`);
     recordDish(DISH, { target: t.name, slug: t.slug, file: t.file, status: "failed", error: e.message.slice(0, 140) });
-    try { ({ page } = await activePage(b)); await tidy(page); await runStep(page, { do: "open", url: "https://www.linkedin.com/feed/" }); } catch {}
+    // Capture the stuck state, then just tidy the composer — stay on the posts page (no /feed/ bounce).
+    try { ({ page } = await activePage(b)); await page.screenshot({ path: `runs/cook-fail-${t.slug || posted}.png` }).catch(() => {}); await tidy(page); } catch {}
     if (consec >= MAX_CONSEC_FAILS) { console.error(`\n■ STOPPED — ${consec} consecutive fails`); break; }
     await sleep(10000);
   }

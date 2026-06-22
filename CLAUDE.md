@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guides Claude Code in this repo. **Keep it tight — it loads every turn.** Lore (full brigade roster, restaurant/cuisine analogy, strategy) lives in auto-memory (`MEMORY.md`); per-restaurant cooking knowledge lives in `site-memories/<domain>.md` (loaded only when cooking that site). **Do not grow this file with narrative.**
+Guides Claude Code in this repo — **self-contained: everything you need to operate Loop is here + `site-memories/<domain>.md`** (per-restaurant cooking knowledge, loaded only when cooking that site). **Keep it tight — it loads every turn; do not grow it with narrative.** Each contributor's `~/.claude` auto-memory is private and per-user — **not** required to operate, and don't assume teammates share yours.
 
 # Loop Browser
 
@@ -13,8 +13,8 @@ Loop **authors, runs, or heals a recipe that drives the visible browser to cook 
 - **Never:** type credentials (only the human logs in); blast batches without pacing; bypass a platform throttle; ship personal data.
 - **Out of lane** (general research, unrelated features) → take the smallest in-lane action or stop & ask. Don't wander.
 
-### Loop Mode vs Owner Mode (two states — ANNOUNCE every flip; details → memory `owner-loop-mode`)
-- **🔒 Loop Mode ON** — blinders on, cooking one dish. Micro-memory = ONLY this site's cuisine pack + this dish. Fast, no deliberation beyond the dish. Off-dish → don't improvise; stop and hand back to the owner (fail-fast beats wandering). **Always mop** (Mopper clears scratch/drafts) as the closing step before handing back.
+### Loop Mode vs Owner Mode (two states — ANNOUNCE every flip; this section is the full spec)
+- **🔒 Loop Mode ON** — blinders on, cooking one dish. Micro-memory = ONLY this site's cuisine pack + this dish; nothing else loaded or considered. **The browser instance binds the site** (multi-instance model under Run/dev): a session driving the WhatsApp instance does ONLY WhatsApp (loads only `site-memories/whatsapp.md`); LinkedIn is a *different* instance/session — cross-site means a different session, never a wider context. Off-dish → don't improvise; stop and hand back (fail-fast beats wandering). **Always mop** as the closing step — clear throwaway scratch (drafts, screenshots, `.txt`/`.err` dumps, stray native dialogs); keep tools/data/logs.
 - **🔓 Owner Mode (OFF)** — strategy, research, design, build, discuss. Full context + general tools.
 - **Switch ON** to execute a named dish (cook/run/serve/send X, a recipe, a batch); **OFF** to think/plan/build/discuss or when a cook hits something out of lane. Owner can force it: **"loop mode on/off."** Open every cooking turn with `🔒 Loop Mode ON (memory: <pack> + <dish>)`, else `🔓 Owner Mode`.
 - **Decisive test** (not "am I in the browser"): **is there ONE defined, bounded dish on ONE named site?** → ON (read-only counts — e.g. "read group X → study"). Open-ended exploration/research → OFF. Building a tool = OFF; running/verifying it = ON (announce the flip).
@@ -25,7 +25,7 @@ Loop **authors, runs, or heals a recipe that drives the visible browser to cook 
 - **Line Cook** = `loop run`/`loop serve` — deterministic, no LLM, ~99% of work. **Head Chef / Brain** = the LLM — authors/heals only, off the hot path (the moat). **Owner** = the human (holds the key).
 - **Porter** (`porter.mjs`) = gathers ingredients off the hot path (files, Voyager, messages). **Expediter** (`loop serve`) = picks next ticket, dedups, keeps the **Service Log**, verifies. **Sous Chef** = Guardian (retry → self-heal → incident → stop). **Mopper** = tidy-up (task = "mop"; ex-Plongeur).
 - **Service Log** = `dishes/service-log.json` — every dish cooked, keyed by dish→date; record of work + dedup guard; personal → gitignored.
-- (Full roster + restaurant/cuisine analogy → memory `loop-kitchen-model-full`.)
+- (The terms above are the whole working vocabulary; the extended restaurant analogy is optional flavor, not needed to operate.)
 
 ## Cuisine packs (the cook's context — load ONLY when cooking that restaurant)
 Per-restaurant knowledge (selectors, flow, quirks, account-health) lives in **`site-memories/<domain>.md`** — the **generic site MODEL ships** (no personal data); your specifics (companyId, paths, account state, real names) stay private in `site-memories/local/` / `recipes/local/`. **When cooking/authoring on a site, read its cuisine pack — that's your cuisine context, and nothing else cuisine-wise.** Keep the two memories apart: the owner/strategy context stays in the chat; a cook loads only its **cuisine pack + the dish**.
@@ -86,10 +86,11 @@ Step verbs: `open · fill · click · press · wait · assert · read · snapsho
 ## Run / dev
 - `npm start` — launch Loop Browser (CDP :9222); not required (`loop` auto-launches) but the dev way.
 - `node cli.mjs <args>` (or `loop …` after `npm link`). · `npm run site` — landing site + counter at :8099. · `npm run dist` / `dist:win` — mac DMG / Windows EXE.
+- **Multiple browsers at once — one per account/site (no intersection):** set `LOOP_CDP_PORT` (default 9222) + `LOOP_PROFILE_DIR` per terminal → independent instances, each with its own port, login, and foreground. WhatsApp on one, LinkedIn on another, etc. The **same account can't run twice** (WhatsApp is single-session); same-account automations share that one instance and take turns. Each terminal's `loop`/cron targets its instance via those two env vars (set them in the launchd plist for crons). This is what makes Loop Mode's per-site narrowing hard (the instance = the site).
 
-## Distribution (SHIPPED — on npm)
-- `loop-browser` published. Headline install = **`npx loop-browser setup`** (skill + start). `npm i -g loop-browser` puts `loop` on PATH.
-- **`electron` in `peerDependencies`** (electron-builder forbids it in `dependencies`); npm 7+ auto-installs for npx. Don't move it.
-- **Publishing is manual** (Trusted-Publishing CI fails — `id-token` not granted): bump version, `npm publish` with a bypass-2FA token. `prepublishOnly` guard runs either way.
+## Distribution (repo-first)
+- **Front door = `git clone` only:** `git clone … → npm install → npm link → loop setup`. README + website lead with clone; do NOT advertise `npx` / `npm i -g` / a download. The repo is canonical — the living method library (`git pull` for the latest; PR fixes back). 4 collaborators → 4× leak risk: **grep for personal data before every commit** (the git boundary above).
+- **npm package stays published but unadvertised** — silent fallback + still the dep source (`npm install` pulls deps). Re-publishing is OPTIONAL (repo is source of truth), so the CI/token pain is off the critical path.
+- **`electron` in `peerDependencies`** (electron-builder forbids it in `dependencies`); npm 7+ auto-installs. Don't move it.
 
-> Full history, decisions, per-recipe + per-cuisine notes live in auto-memory (`MEMORY.md`) and `site-memories/`.
+> Per-recipe + per-cuisine notes live in `recipes/` + `site-memories/` (this repo, shared by all contributors). Project history/strategy lives in each contributor's private `~/.claude` auto-memory — not required to operate Loop.
