@@ -15,6 +15,7 @@ Loop **authors, runs, or heals a recipe that drives the visible browser to cook 
 
 ### Loop Mode vs Owner Mode (two states — ANNOUNCE every flip; this section is the full spec)
 - **🔒 Loop Mode ON** — blinders on, cooking one dish. Micro-memory = ONLY this site's cuisine pack + this dish; nothing else loaded or considered. **The browser instance binds the site** (multi-instance model under Run/dev): a session driving the WhatsApp instance does ONLY WhatsApp (loads only `site-memories/whatsapp.md`); LinkedIn is a *different* instance/session — cross-site means a different session, never a wider context. Off-dish → don't improvise; stop and hand back (fail-fast beats wandering). **Always mop** as the closing step — clear throwaway scratch (drafts, screenshots, `.txt`/`.err` dumps, stray native dialogs); keep tools/data/logs.
+- **🧑 Human factor (the moment a cook touches real people — invites, DMs, posts, mass-sends):** being told to *do* X is NOT license to choose the targets/scope *for* the human. Before any send that reaches real people, **surface the who/the list and pause for the owner's call** — never auto-execute to the max or blast the first N the UI happens to load. Scarce resources especially (limited invite credits, daily caps): the human decides *who* and *how many*. These go out from the owner's name/page — pace human-like, keep it personal, never bot-blast. (Lesson: spent all 48 LinkedIn invite credits on whoever rendered first, with no owner input on who.)
 - **🔓 Owner Mode (OFF)** — strategy, research, design, build, discuss. Full context + general tools.
 - **Switch ON** to execute a named dish (cook/run/serve/send X, a recipe, a batch); **OFF** to think/plan/build/discuss or when a cook hits something out of lane. Owner can force it: **"loop mode on/off."** Open every cooking turn with `🔒 Loop Mode ON (memory: <pack> + <dish>)`, else `🔓 Owner Mode`.
 - **Decisive test** (not "am I in the browser"): **is there ONE defined, bounded dish on ONE named site?** → ON (read-only counts — e.g. "read group X → study"). Open-ended exploration/research → OFF. Building a tool = OFF; running/verifying it = ON (announce the flip).
@@ -43,6 +44,7 @@ Existing packs: `site-memories/linkedin.md`, `site-memories/whatsapp.md`. Bespok
 - `porter.mjs` (ingredient gathering) · `servicelog.mjs` (the Service Log).
 - `ui/` — `home.html`, `toolbar.html`, `preload.js` (the glass UI).
 - `recipes/` — saved recipes (`*.json`). `recipes/local/` = private (gitignored).
+- `bin/launch.mjs` — the `loop-browser` / `npx loop-browser` bin: starts the desktop app in the **background** and returns (terminal/session stays free). `setup` arg installs the skill first.
 - `bin/loop` + `bin/loop.cmd` — packaged-app CLI shim: runs bundled `cli.mjs` via the app's own Electron (`ELECTRON_RUN_AS_NODE`), so no system Node/repo needed. First launch (`maybeInstallCli()`) offers PATH install.
 - `skill/loop/SKILL.md` — Claude Code skill teaching `loop`; `scripts/install-skill.mjs` installs it. · `site/` — landing page. · `scripts/` — dev tooling.
 
@@ -76,6 +78,7 @@ Step verbs: `open · fill · click · press · wait · assert · read · snapsho
 - **Ships:** engine (`main/cli/lib/ui` + `porter`/`servicelog`), `recipes/*.json` (method only), **`site-memories/*.md` (generic site MODELS — how a public site works; scrubbed of personal data)**, `skill/`, `site/`, docs.
 - **Never ships (gitignored):** `.loop-profile/` (login = the key), `dishes/` (incl. `service-log.json` — work record), `runs/`, `recipes/local/` + **`site-memories/local/`** (our specifics: companyId, paths, account state, real names), `.claude/`, DMG/EXE. *Recipe + site-model travel; meal, pantry, key, our specifics stay home.* `grep` for personal data before committing.
 - **HARD RULE — no secret/private data ever ships** (passwords, tokens, keys, sessions, private recipes). 4 layers, never weaken: `.gitignore` → npm `files` allowlist (`recipes/*.json`, NEVER `recipes/`) → `.npmignore` → publish guard `scripts/check-no-secrets.mjs` (`prepublishOnly`, gates manual + CI). A real leak was caught here once.
+- **Packaging-completeness guard** (separate gate): `scripts/check-bundled-imports.mjs` (`npm run check:bundle`) verifies every local `./` import reachable from the bundled entry points is shipped by BOTH npm `files` AND electron-builder `build.files` — else the packaged/published `loop` crashes `ERR_MODULE_NOT_FOUND`. Runs on `prepublishOnly` + every `dist`/`pack` build (a real gap shipped a broken CLI in 0.0.5).
 
 ## Hard rules
 - **Only the human logs in** — never type credentials. If logged out, stop & ask.
