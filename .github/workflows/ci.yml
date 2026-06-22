@@ -1,0 +1,30 @@
+name: CI
+
+# Quality gate for a team with no human-review capacity: every push and PR to main is
+# auto-checked. No npm install needed — these are pure-node checks, so CI is fast.
+# To make it BLOCK merges (not just report red): GitHub → Settings → Branches → add a
+# branch-protection rule on `main` requiring the "guards" check to pass.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Syntax-check all JS
+        run: |
+          set -e
+          for f in $(git ls-files '*.mjs' '*.js'); do node --check "$f"; done
+          echo "✓ all .mjs/.js parse"
+      - name: Secrets / private-data guard
+        run: node scripts/check-no-secrets.mjs
+      - name: Bundled-imports guard
+        run: node scripts/check-bundled-imports.mjs
