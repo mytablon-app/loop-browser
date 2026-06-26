@@ -9,11 +9,19 @@
 //   or already listening.
 //
 // Persisted at $LOOP_PROFILE_BASE/instances.json (default ~/.loop-profiles/) —
-// per-machine, OUTSIDE the repo, so it never ships and never leaks.
+// per-machine, OUTSIDE the repo, so it never ships and never leaks. NOTHING about
+// which site gets which port is hardcoded: the FILE is the only source of truth.
+// Ports are handed out first-come from the first free one (the actual number is
+// irrelevant), and a port is reserved to its site FOR LIFE — even after that
+// instance is shut down — until explicitly released/overridden.
 //
 // Usage:
 //   node scripts/instances.mjs resolve <site> [port]   # prints shell exports for `eval`
 //   node scripts/instances.mjs list                    # show every known site + status
+//   node scripts/instances.mjs forget <site>           # release a site's reservation (force)
+//
+// Scan range starts at $LOOP_PORT_BASE (default 9222) — just a starting point, not a
+// per-site assignment.
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { homedir } from "os";
@@ -22,25 +30,15 @@ import net from "net";
 
 const BASE = process.env.LOOP_PROFILE_BASE || path.join(homedir(), ".loop-profiles");
 const REGISTRY = path.join(BASE, "instances.json");
-const BASE_PORT = 9222, MAX_PORT = 9322;
+const BASE_PORT = Number(process.env.LOOP_PORT_BASE) || 9222, MAX_PORT = BASE_PORT + 100;
 
-// Aliases → canonical site key.
+// Aliases → canonical site key (typing convenience only — no port meaning).
 const ALIASES = { li: "linkedin", wa: "whatsapp" };
 const canon = (s) => ALIASES[(s || "").toLowerCase()] || (s || "").toLowerCase();
-const labelFor = (site) => (site === "linkedin" ? "li" : site === "whatsapp" ? "wa" : site);
-
-// Seeds so EXISTING logins are never disturbed: LinkedIn's login lives in the
-// DEFAULT Electron userData (where it was first signed in); WhatsApp in its own dir.
-const seeds = () => ({
-  linkedin: { port: 9222, profileDir: path.join(homedir(), "Library", "Application Support", "Loop Browser") },
-  whatsapp: { port: 9223, profileDir: path.join(BASE, "whatsapp") },
-});
 
 function load() {
-  let reg = {};
-  if (existsSync(REGISTRY)) { try { reg = JSON.parse(readFileSync(REGISTRY, "utf8")); } catch {} }
-  for (const [k, v] of Object.entries(seeds())) if (!reg[k]) reg[k] = v; // merge, never overwrite
-  return reg;
+  if (existsSync(REGISTRY)) { try { return JSON.parse(readFileSync(REGISTRY, "utf8")); } catch {} }
+  return {};
 }
 function save(reg) {
   mkdirSync(BASE, { recursive: true });
@@ -77,9 +75,9 @@ async function resolve(siteRaw, portArg) {
   const reg = load();
   let entry = reg[site];
   if (!entry) { entry = { port: await nextFreePort(reg), profileDir: path.join(BASE, site) }; reg[site] = entry; }
-  if (portArg) entry.port = Number(portArg);            // explicit override, if given
-  reg[site] = entry; save(reg);                          // persist (incl. seed-merge)
-  return { site, port: entry.port, profileDir: entry.profileDir, label: labelFor(site), running: await portUp(entry.port) };
+  if (portArg) entry.port = Number(portArg);            // explicit override (force-change)
+  reg[site] = entry; save(reg);                          // persist the reservation
+  return { site, port: entry.port, profileDir: entry.profileDir, running: await portUp(entry.port) };
 }
 
 const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
@@ -89,9 +87,15 @@ if (cmd === "resolve") {
   const r = await resolve(arg, portArg);
   console.log(`export LOOP_CDP_PORT=${shq(r.port)}`);
   console.log(`export LOOP_PROFILE_DIR=${shq(r.profileDir)}`);
-  console.log(`export LOOP_LABEL=${shq("loop-browser-" + r.label)}`);
+  console.log(`export LOOP_LABEL=${shq("loop-browser-" + r.site)}`);
   console.log(`LOOP_SITE=${shq(r.site)}`);
   console.log(`LOOP_RUNNING=${shq(r.running ? "1" : "0")}`);
+} else if (cmd === "forget") {
+  const site = canon(arg);
+  const reg = load();
+  if (!reg[site]) { console.error(`no reservation for '${site}'`); process.exit(1); }
+  const freed = reg[site].port; delete reg[site]; save(reg);
+  console.log(`released '${site}' (was :${freed}). Its login profile is kept; next open reassigns a port.`);
 } else if (cmd === "list" || !cmd) {
   const reg = load();
   const rows = [];
@@ -101,6 +105,6 @@ if (cmd === "resolve") {
   for (const r of rows) console.log(`  ${r.site.padEnd(12)}  :${r.port}   ${r.up ? "● up  " : "○ down"}    ${r.profileDir}`);
   console.log(`\n  registry: ${REGISTRY}`);
 } else {
-  console.error("usage: instances.mjs resolve <site> [port] | list");
+  console.error("usage: instances.mjs resolve <site> [port] | list | forget <site>");
   process.exit(1);
 }

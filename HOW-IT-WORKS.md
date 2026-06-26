@@ -93,10 +93,13 @@ source scripts/instance.sh notion      # NEW site → auto-grabs the next free p
 node scripts/instances.mjs list        # see what's mapped to which port
 ```
 
-The first time you open a site it picks the next free port and **remembers it** (in
-`~/.loop-profiles/instances.json`, which stays on your machine). Open that site again and it
-**reuses the same port and login profile** — no relaunch, no re-login. Because each site has its
-own port and profile, WhatsApp on one and LinkedIn on another never step on each other.
+The first time you open a site it grabs the next free port and **remembers it** (in
+`~/.loop-profiles/instances.json`, which stays on your machine). Nothing is hardcoded — the port
+number doesn't matter; what matters is that it's **reserved to that site for life.** Open the site
+again and it **reuses the same port and login profile** — no relaunch, no re-login. Even if you
+shut a site down, its port stays reserved, so opening a *different* site never reuses it. (Need to
+change one? `node scripts/instances.mjs forget <site>` releases it.) That's why WhatsApp on one
+instance and LinkedIn on another never step on each other.
 
 ---
 
