@@ -32,13 +32,15 @@ export async function isBrowserUp() {
 // the app keeps running, so no terminal (or Claude Code session) gets stuck
 // attached to it. Quitting = close the window (no Ctrl+C needed).
 export function launchDetached() {
+  // Rebrand FIRST: it may rename the .app bundle + binary and repoint electron's
+  // path.txt, so require("electron") below must read the updated path.
+  maybeRebrand();
   let electron;
   try {
-    electron = require("electron"); // the Electron binary path
+    electron = require("electron"); // the Electron binary path (post-rebrand path.txt)
   } catch {
     throw new Error("Electron not found. Install with: npm i -g loop-browser");
   }
-  maybeRebrand(); // keep the macOS Dock/menu identity as "Loop Browser" on EVERY launch
   const child = spawn(electron, [APP_ROOT], { detached: true, stdio: "ignore" });
   child.unref();
 }

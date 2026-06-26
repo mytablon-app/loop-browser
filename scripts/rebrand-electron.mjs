@@ -1,56 +1,78 @@
-// Dev rebrand: rename the bundled Electron.app to "Loop Browser" + swap its icon,
-// so the macOS menu bar / dock show our name instead of "Electron".
-// Runs as `prestart` before every `npm start`. (node_modules is reinstalled-safe:
-// this re-applies each launch. The real packaged app uses electron-builder's productName.)
+// Dev rebrand: turn the bundled Electron.app into a real "Loop Browser.app" so the
+// macOS Dock / menu bar / Finder all show our name instead of "Electron".
+// (The packaged app uses electron-builder's productName; this is for source runs.)
+//
+// Patching the Info.plist alone is NOT enough: when the Dock's cache is stale it
+// falls back to the .app FOLDER name and the EXECUTABLE name — both "Electron" —
+// so this also renames the bundle folder + the inner binary and repoints
+// electron's path.txt. Runs on every launch via lib.mjs maybeRebrand(); the heavy
+// pass is cached behind a version+schema marker so repeat launches are fast.
 
 import { execSync } from "child_process";
-import { existsSync, copyFileSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, copyFileSync, readFileSync, writeFileSync, mkdirSync, renameSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const app = path.join(root, "node_modules", "electron", "dist", "Electron.app");
-const plist = path.join(app, "Contents", "Info.plist");
-const icns = path.join(root, "assets", "loop.icns");
 const NAME = "Loop Browser";
-// Unique bundle id — the DEEP fix. Stock Electron uses `com.github.Electron`, which
-// every other dev-Electron on the machine ALSO claims, so LaunchServices keeps
-// resolving the Dock name back to "Electron". A dedicated id isolates our identity.
+// Unique bundle id — stock Electron uses `com.github.Electron`, shared by every other
+// dev-Electron on the machine, so LaunchServices keeps resolving the name to "Electron".
 const BUNDLE_ID = "com.mytablon.loopbrowser";
-// Bump when the patch logic below changes, to force a re-apply over an existing marker.
-const REBRAND_SCHEMA = "2";
+// Bump to force a re-apply over an existing marker. v3 = also rename the .app FOLDER
+// + the executable (the Dock falls back to those when its cache is stale — the real fix).
+const REBRAND_SCHEMA = "3";
 
-// LaunchServices re-register — refreshes the Dock NAME. Cheap (~100ms), so run it
-// EVERY launch even when the heavy rebrand is cached: `electron .` direct-execs the
-// binary, and after rebuilds churn the LS cache the Dock otherwise falls back to the
-// "Electron" binary name. (Icon cache / killall Dock stays one-time, below.)
+const dist = path.join(root, "node_modules", "electron", "dist");
+const OLD_APP = path.join(dist, "Electron.app");
+const APP_DIR = path.join(dist, `${NAME}.app`);                          // "Loop Browser.app"
+const pathTxt = path.join(root, "node_modules", "electron", "path.txt"); // require("electron") reads this
+const icns = path.join(root, "assets", "loop.icns");
+
+// Operate on whichever bundle is present — already renamed, or still stock Electron.app.
+let app = existsSync(APP_DIR) ? APP_DIR : OLD_APP;
+let plist = path.join(app, "Contents", "Info.plist");
+const markerPath = () => path.join(app, ".loop-rebranded");
+
+// LaunchServices re-register — refreshes the Dock NAME on every launch (cheap ~100ms);
+// the LS cache otherwise flaps back to the old name after churn.
 const lsregister =
   "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/" +
   "LaunchServices.framework/Versions/A/Support/lsregister";
 const reregister = () => { try { execSync(`"${lsregister}" -f "${app}"`, { stdio: "ignore" }); } catch {} };
 
 if (!existsSync(app)) {
-  console.error("rebrand: Electron.app not found (run npm install) — skipping");
+  console.error("rebrand: Electron bundle not found (run npm install) — skipping");
   process.exit(0);
 }
 
-// Rebranding (esp. `codesign --deep` over ~150MB) is slow but only needs to run
-// ONCE per Electron install. Cache a marker keyed to the Electron version; if it
-// matches, skip everything so `npm start` boots fast. `npm install` replaces
-// node_modules → marker vanishes → rebrand re-runs automatically.
-const marker = path.join(app, ".loop-rebranded");
+// Cache the heavy pass (codesign --deep over ~150MB) behind a marker keyed to the
+// Electron version + rebrand schema. `npm install` replaces node_modules → marker
+// vanishes → rebrand re-runs automatically on the next launch.
 let electronVer = "?";
 try {
   electronVer = JSON.parse(
     readFileSync(path.join(root, "node_modules", "electron", "package.json"), "utf8")
   ).version;
 } catch {}
-const want = `${electronVer}#${REBRAND_SCHEMA}`; // re-apply when version OR patch logic changes
-if (existsSync(marker) && readFileSync(marker, "utf8").trim() === want) {
+const want = `${electronVer}#${REBRAND_SCHEMA}`;
+if (existsSync(markerPath()) && readFileSync(markerPath(), "utf8").trim() === want) {
   reregister(); // keep the Dock name fresh on every launch
   console.log(`✓ Electron already branded "${NAME}" (v${electronVer}) — skipping`);
   process.exit(0);
 }
+
+// --- Deep rename: folder + executable, so NOTHING on disk is named "Electron" ---
+if (app === OLD_APP) {
+  try { renameSync(OLD_APP, APP_DIR); app = APP_DIR; plist = path.join(app, "Contents", "Info.plist"); }
+  catch (e) { console.error("rebrand: rename .app failed —", e.message); }
+}
+try {
+  const macos = path.join(app, "Contents", "MacOS");
+  const from = path.join(macos, "Electron"), to = path.join(macos, NAME);
+  if (existsSync(from) && !existsSync(to)) renameSync(from, to);
+} catch {}
+// repoint electron's path.txt at the renamed bundle+binary so require("electron") resolves
+try { writeFileSync(pathTxt, `${NAME}.app/Contents/MacOS/${NAME}`); } catch {}
 
 function plistSet(key, value) {
   try {
@@ -65,6 +87,7 @@ function plistSet(key, value) {
 plistSet("CFBundleName", NAME);
 plistSet("CFBundleDisplayName", NAME);
 plistSet("CFBundleIdentifier", BUNDLE_ID); // unique id → no LaunchServices collision with stock Electron
+plistSet("CFBundleExecutable", NAME);      // match the renamed executable
 
 // swap the app icon (dock / Finder) to the Loop icon
 try {
@@ -73,10 +96,7 @@ try {
 } catch {}
 
 // Make the bundle launch Loop Browser when opened STANDALONE (Dock/Finder click,
-// after a full quit) instead of Electron's default welcome screen. Electron runs
-// Contents/Resources/app when no app path is passed on the CLI — point it at our
-// real main.js. `npm start` (electron .) passes "." so it's unaffected; only the
-// no-arg launch falls through to this shim.
+// after a full quit) instead of Electron's default welcome screen.
 try {
   const shim = path.join(app, "Contents", "Resources", "app");
   mkdirSync(shim, { recursive: true });
@@ -89,13 +109,12 @@ try {
   execSync(`codesign --force --deep --sign - "${app}"`, { stdio: "ignore" });
 } catch {}
 
-// Force macOS to re-read the patched name + icon. `lsregister -f` re-registers;
-// restarting the Dock drops its in-memory ICON cache (one-time, on rebrand only —
-// the name refresh happens every launch via reregister() above).
+// Force macOS to re-read the patched name + icon, then restart the Dock to drop its
+// in-memory tile-name/icon cache (one-time, on rebrand only).
 reregister();
 try { execSync("killall Dock", { stdio: "ignore" }); } catch {}
 
-// Stamp the marker so subsequent launches skip this whole step.
-try { writeFileSync(marker, want); } catch {}
+// Stamp the marker (inside the now-renamed bundle) so subsequent launches skip this.
+try { writeFileSync(markerPath(), want); } catch {}
 
-console.log(`✓ rebranded Electron → "${NAME}" (v${electronVer})`);
+console.log(`✓ rebranded Electron → "${NAME}.app" (v${electronVer})`);
