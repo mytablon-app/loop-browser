@@ -3,7 +3,7 @@
 
 import { chromium } from "playwright-core";
 import { mkdirSync, writeFileSync, readFileSync, cpSync, existsSync, statSync, readdirSync } from "fs";
-import { spawn } from "child_process";
+import { spawn, execFileSync } from "child_process";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 import { homedir } from "os";
@@ -38,8 +38,30 @@ export function launchDetached() {
   } catch {
     throw new Error("Electron not found. Install with: npm i -g loop-browser");
   }
+  maybeRebrand(); // keep the macOS Dock/menu identity as "Loop Browser" on EVERY launch
   const child = spawn(electron, [APP_ROOT], { detached: true, stdio: "ignore" });
   child.unref();
+}
+
+// macOS only, dev/source runs only. The Dock reads the Electron.app bundle's
+// identity, which `app.setName()` can't override, and the LaunchServices cache
+// flaps back to "Electron" (shared `com.github.Electron` id) unless refreshed. The
+// rebrand script patches the bundle (name + unique id + icon) and re-registers it;
+// it's cached (keyed to Electron version + rebrand schema), so after the one-time
+// heavy pass this is just a fast LS refresh. Only `npm start` ran it before — this
+// makes EVERY `loop`/`instance.sh` launch run it too. Packaged builds have no
+// scripts/ dir (it's a real "Loop Browser.app" already) → skipped.
+function maybeRebrand() {
+  if (process.platform !== "darwin") return;
+  const script = path.join(APP_ROOT, "scripts", "rebrand-electron.mjs");
+  if (!existsSync(script)) return;
+  try {
+    execFileSync(process.execPath, [script], {
+      stdio: "ignore",
+      timeout: 120000, // one-time heavy pass (codesign --deep) can take several seconds; cached after
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" }, // run as plain node even under the packaged shim
+    });
+  } catch {}
 }
 
 // Make sure the browser is running; if not, start it in the background and wait

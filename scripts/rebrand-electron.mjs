@@ -13,6 +13,12 @@ const app = path.join(root, "node_modules", "electron", "dist", "Electron.app");
 const plist = path.join(app, "Contents", "Info.plist");
 const icns = path.join(root, "assets", "loop.icns");
 const NAME = "Loop Browser";
+// Unique bundle id — the DEEP fix. Stock Electron uses `com.github.Electron`, which
+// every other dev-Electron on the machine ALSO claims, so LaunchServices keeps
+// resolving the Dock name back to "Electron". A dedicated id isolates our identity.
+const BUNDLE_ID = "com.mytablon.loopbrowser";
+// Bump when the patch logic below changes, to force a re-apply over an existing marker.
+const REBRAND_SCHEMA = "2";
 
 // LaunchServices re-register — refreshes the Dock NAME. Cheap (~100ms), so run it
 // EVERY launch even when the heavy rebrand is cached: `electron .` direct-execs the
@@ -39,7 +45,8 @@ try {
     readFileSync(path.join(root, "node_modules", "electron", "package.json"), "utf8")
   ).version;
 } catch {}
-if (existsSync(marker) && readFileSync(marker, "utf8").trim() === electronVer) {
+const want = `${electronVer}#${REBRAND_SCHEMA}`; // re-apply when version OR patch logic changes
+if (existsSync(marker) && readFileSync(marker, "utf8").trim() === want) {
   reregister(); // keep the Dock name fresh on every launch
   console.log(`✓ Electron already branded "${NAME}" (v${electronVer}) — skipping`);
   process.exit(0);
@@ -57,6 +64,7 @@ function plistSet(key, value) {
 
 plistSet("CFBundleName", NAME);
 plistSet("CFBundleDisplayName", NAME);
+plistSet("CFBundleIdentifier", BUNDLE_ID); // unique id → no LaunchServices collision with stock Electron
 
 // swap the app icon (dock / Finder) to the Loop icon
 try {
@@ -88,6 +96,6 @@ reregister();
 try { execSync("killall Dock", { stdio: "ignore" }); } catch {}
 
 // Stamp the marker so subsequent launches skip this whole step.
-try { writeFileSync(marker, electronVer); } catch {}
+try { writeFileSync(marker, want); } catch {}
 
 console.log(`✓ rebranded Electron → "${NAME}" (v${electronVer})`);
