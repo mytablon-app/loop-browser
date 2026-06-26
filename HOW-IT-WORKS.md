@@ -81,6 +81,23 @@ This is why Loop scales: adding a new website only means writing a new cuisine p
 recipes. The kitchen — the engine, the brigade, the no-LLM-in-the-hot-path design — is shared
 across all of them.
 
+### Running several restaurants at once
+
+Each site runs as its own **instance**: **one site ↔ one CDP port ↔ one login profile.** You don't
+manage ports by hand — the **instance registry** does it:
+
+```sh
+source scripts/instance.sh linkedin    # remembered → :9222, reuses your login
+source scripts/instance.sh whatsapp    # remembered → :9223
+source scripts/instance.sh notion      # NEW site → auto-grabs the next free port, remembers it
+node scripts/instances.mjs list        # see what's mapped to which port
+```
+
+The first time you open a site it picks the next free port and **remembers it** (in
+`~/.loop-profiles/instances.json`, which stays on your machine). Open that site again and it
+**reuses the same port and login profile** — no relaunch, no re-login. Because each site has its
+own port and profile, WhatsApp on one and LinkedIn on another never step on each other.
+
 ---
 
 ## Two modes: Loop Mode vs Owner Mode
