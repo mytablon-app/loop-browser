@@ -49,3 +49,6 @@ serve.mjs
 # site-memories/local/ (and recipes/local). Scrub packs before they ship.
 site-memories/local/*
 !site-memories/local/.gitkeep
+
+# per-terminal ctx-strip label (local only)
+.loop-label

@@ -12,7 +12,7 @@
 //   loop run <recipe-name> key=value key2="value 2"
 //   loop recipes                    (list saved recipes)
 
-import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync, rmSync } from "fs";
 import { execSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -199,6 +199,48 @@ if (cmd === "os-dismiss" || cmd === "os-escape") {
   }
   console.log(`  · os-dismiss → sent Escape ×${n} (confirm with: loop shot-os)`);
   process.exit(0);
+}
+
+// "loop mop" — the Mopper as a first-class command, so a cook ALWAYS ends clean without
+// relying on memory. TWO parts + a health check: (1) browser station — close any open web
+// side-panel/modal by ACCESSIBLE NAME (Close/Back), NEVER Escape (Escape can close the whole
+// chat, not just a modal); (2) scratch — wipe runs/scratch/. Then verify the station is OK and
+// print PASS/WARN. Safe + idempotent: with the browser down it still wipes scratch and reports.
+// Scoped to LOOP_CDP_PORT (this session's instance only). Self-timeout so it can never hang a hook.
+if (cmd === "mop") {
+  const watchdog = setTimeout(() => { console.log("⚠ mop: timed out — exiting"); process.exit(1); }, 20000);
+  watchdog.unref?.();
+  const rep = { scratch: false, panels: 0, station: "browser-down", warn: [] };
+  // (1) scratch — always, even with the browser down.
+  try {
+    const sd = new URL("./runs/scratch/", import.meta.url);
+    mkdirSync(sd, { recursive: true });
+    for (const f of readdirSync(sd)) rmSync(new URL(f, sd), { recursive: true, force: true });
+    rep.scratch = true;
+  } catch (e) { rep.warn.push("scratch: " + e.message); }
+  // (2) browser station — only if reachable (never auto-launch just to mop).
+  if (await isBrowserUp().catch(() => false)) {
+    try {
+      const browser = await connect({ autostart: false });
+      const { page } = await activePage(browser);
+      for (let k = 0; k < 4; k++) {                          // close up to 4 nested panels/modals
+        const loc = page.getByRole("button", { name: /^(Close|Back)$/ });
+        if (await loc.count().catch(() => 0)) {
+          await loc.first().evaluate((el) => el.click()).catch(() => {});
+          rep.panels++; await sleep(400);
+        } else break;
+      }
+      const url = page.url() || "";
+      rep.station = (!url || /^about:/.test(url)) ? "blank" : "clean";
+      if (rep.station === "blank") rep.warn.push("active page is blank/about:");
+    } catch (e) { rep.station = "error"; rep.warn.push("station: " + e.message.split("\n")[0]); }
+  }
+  clearTimeout(watchdog);
+  const ok = rep.scratch && rep.station !== "error" && rep.station !== "blank";
+  console.log(`  · mop → scratch ${rep.scratch ? "cleared" : "FAILED"} · panels closed ${rep.panels} · station ${rep.station}`);
+  if (rep.warn.length) console.log("    ⚠ " + rep.warn.join(" · "));
+  console.log(ok ? "✓ all clean" : "⚠ mop finished with warnings (see above)");
+  process.exit(ok ? 0 : 1);
 }
 
 const browser = await connect();

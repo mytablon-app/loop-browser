@@ -9,7 +9,10 @@ import { connect, activePage, runStep } from "./lib.mjs";
 import { servedSet, recordDish, logPath } from "./servicelog.mjs";
 
 const DISH = "linkedin-connect";
-const KEYWORDS = "investor";
+// Run params overridable by env so the committed driver stays generic (no personal
+// specifics): CONNECT_KEYWORDS=founder, CONNECT_NOTELESS=1 (skip the note → faster).
+const KEYWORDS = process.env.CONNECT_KEYWORDS || "investor";
+const NOTELESS = !!process.env.CONNECT_NOTELESS;
 const GEO_UAE = "%5B%22104305776%22%5D";       // ["104305776"] = United Arab Emirates
 const NETWORK_2ND = "%5B%22S%22%5D";            // ["S"] = 2nd degree
 const NOTE = "Inviting you to Tablon, an exclusive community for serious investors & founders. Would love to have you ❤️";
@@ -20,7 +23,7 @@ const LONG_BREAK_EVERY = 5;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rnd = (a, b) => a + Math.random() * (b - a);
 
-const searchUrl = (p) => `https://www.linkedin.com/search/results/people/?keywords=${KEYWORDS}&network=${NETWORK_2ND}&geoUrn=${GEO_UAE}&origin=FACETED_SEARCH${p > 1 ? `&page=${p}` : ""}`;
+const searchUrl = (p) => `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(KEYWORDS)}&network=${NETWORK_2ND}&geoUrn=${GEO_UAE}&origin=FACETED_SEARCH${p > 1 ? `&page=${p}` : ""}`;
 const LIMIT_RE = /weekly invitation limit|reached.+weekly.+invitation|you've used your weekly|no longer send personalized|out of invitations/i;
 
 async function pageHitLimit(page) {
@@ -100,18 +103,25 @@ async function connectWithNote(page, url, name) {
   }).catch(() => false);
   if (needsEmail) { await page.keyboard.press("Escape").catch(() => {}); return "needs-email"; }
 
-  // Add-a-note modal flow
-  const addNote = page.getByRole("button", { name: /add a note/i }).first();
-  if (await addNote.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await addNote.click(); await sleep(rnd(800, 1400));
-    const ta = page.locator('textarea#custom-message, textarea[name="message"], textarea[aria-label*="note" i]').first();
-    if (await ta.isVisible({ timeout: 3000 }).catch(() => false)) { await ta.fill(NOTE); await sleep(rnd(600, 1200)); }
-    const send = page.getByRole("button", { name: /^send$/i }).first();
-    if (await send.isVisible({ timeout: 2000 }).catch(() => false)) { await send.click(); await sleep(rnd(1500, 2500)); }
-  } else {
+  if (NOTELESS) {
+    // Note-less: take the "Send without a note" path straight away.
     const sw = page.getByRole("button", { name: /send without a note/i }).first();
-    if (await sw.isVisible({ timeout: 2000 }).catch(() => false)) { await sw.click(); await sleep(rnd(1500, 2500)); } // fallback
+    if (await sw.isVisible({ timeout: 3000 }).catch(() => false)) { await sw.click(); await sleep(rnd(1500, 2500)); }
     else if (!(await isPending())) { await page.keyboard.press("Escape").catch(() => {}); return "no-modal"; }
+  } else {
+    // Add-a-note modal flow
+    const addNote = page.getByRole("button", { name: /add a note/i }).first();
+    if (await addNote.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await addNote.click(); await sleep(rnd(800, 1400));
+      const ta = page.locator('textarea#custom-message, textarea[name="message"], textarea[aria-label*="note" i]').first();
+      if (await ta.isVisible({ timeout: 3000 }).catch(() => false)) { await ta.fill(NOTE); await sleep(rnd(600, 1200)); }
+      const send = page.getByRole("button", { name: /^send$/i }).first();
+      if (await send.isVisible({ timeout: 2000 }).catch(() => false)) { await send.click(); await sleep(rnd(1500, 2500)); }
+    } else {
+      const sw = page.getByRole("button", { name: /send without a note/i }).first();
+      if (await sw.isVisible({ timeout: 2000 }).catch(() => false)) { await sw.click(); await sleep(rnd(1500, 2500)); } // fallback
+      else if (!(await isPending())) { await page.keyboard.press("Escape").catch(() => {}); return "no-modal"; }
+    }
   }
   // verify
   const toast = await page.evaluate(() => /invitation sent|sent invitation|your invitation/i.test(document.body.innerText || "")).catch(() => false);
@@ -122,7 +132,7 @@ async function connectWithNote(page, url, name) {
 const b = await connect();
 let sent = 0, consec = 0, attempts = 0, dry = 0, emailGates = 0;
 const seen = new Set();
-console.log(`[connect] target ${MAX} · ${KEYWORDS} · UAE · 2nd-degree · WITH note`);
+console.log(`[connect] target ${MAX} · ${KEYWORDS} · UAE · 2nd-degree · ${NOTELESS ? "NOTE-LESS" : "WITH note"}`);
 
 outer: for (let pg = 1; pg <= MAX_PAGES && sent < MAX; pg++) {
   let page;
