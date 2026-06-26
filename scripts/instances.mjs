@@ -23,18 +23,20 @@
 // Scan range starts at $LOOP_PORT_BASE (default 9222) — just a starting point, not a
 // per-site assignment.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, openSync, closeSync, unlinkSync, statSync } from "fs";
 import { homedir } from "os";
 import path from "path";
 import net from "net";
 
 const BASE = process.env.LOOP_PROFILE_BASE || path.join(homedir(), ".loop-profiles");
 const REGISTRY = path.join(BASE, "instances.json");
+const LOCK = REGISTRY + ".lock";
 const BASE_PORT = Number(process.env.LOOP_PORT_BASE) || 9222, MAX_PORT = BASE_PORT + 100;
 
 // Aliases → canonical site key (typing convenience only — no port meaning).
 const ALIASES = { li: "linkedin", wa: "whatsapp" };
 const canon = (s) => ALIASES[(s || "").toLowerCase()] || (s || "").toLowerCase();
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function load() {
   if (existsSync(REGISTRY)) { try { return JSON.parse(readFileSync(REGISTRY, "utf8")); } catch {} }
@@ -43,6 +45,26 @@ function load() {
 function save(reg) {
   mkdirSync(BASE, { recursive: true });
   writeFileSync(REGISTRY, JSON.stringify(reg, null, 2) + "\n");
+}
+
+// Cross-process mutex around the read-modify-write critical section, so two NEW
+// sites resolving at the same instant in two terminals can't both grab the same
+// lowest free port (the file isn't otherwise locked; last save() would win). Uses
+// an O_EXCL lockfile with a stale-lock breaker, so a crashed holder can't wedge it.
+async function withLock(fn) {
+  mkdirSync(BASE, { recursive: true });
+  const start = Date.now();
+  let fd;
+  for (;;) {
+    try { fd = openSync(LOCK, "wx"); break; }
+    catch (e) {
+      if (e.code !== "EEXIST") throw e;
+      try { if (Date.now() - statSync(LOCK).mtimeMs > 10000) { unlinkSync(LOCK); continue; } } catch {}
+      if (Date.now() - start > 5000) throw new Error("registry busy (lock timeout)");
+      await sleep(50);
+    }
+  }
+  try { return await fn(); } finally { try { closeSync(fd); } catch {} try { unlinkSync(LOCK); } catch {} }
 }
 
 // Is something listening on this TCP port right now?
@@ -72,39 +94,51 @@ async function nextFreePort(reg) {
 async function resolve(siteRaw, portArg) {
   const site = canon(siteRaw);
   if (!site) throw new Error("site required");
-  const reg = load();
-  let entry = reg[site];
-  if (!entry) { entry = { port: await nextFreePort(reg), profileDir: path.join(BASE, site) }; reg[site] = entry; }
-  if (portArg) entry.port = Number(portArg);            // explicit override (force-change)
-  reg[site] = entry; save(reg);                          // persist the reservation
+  const entry = await withLock(async () => {
+    const reg = load();
+    let e = reg[site];
+    if (!e) e = { port: await nextFreePort(reg), profileDir: path.join(BASE, site) };
+    if (portArg) e.port = Number(portArg);              // explicit override (force-change)
+    reg[site] = e; save(reg);                            // persist the reservation
+    return e;
+  });
   return { site, port: entry.port, profileDir: entry.profileDir, running: await portUp(entry.port) };
 }
 
 const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 
 const [cmd, arg, portArg] = process.argv.slice(2);
-if (cmd === "resolve") {
-  const r = await resolve(arg, portArg);
-  console.log(`export LOOP_CDP_PORT=${shq(r.port)}`);
-  console.log(`export LOOP_PROFILE_DIR=${shq(r.profileDir)}`);
-  console.log(`export LOOP_LABEL=${shq("loop-browser-" + r.site)}`);
-  console.log(`LOOP_SITE=${shq(r.site)}`);
-  console.log(`LOOP_RUNNING=${shq(r.running ? "1" : "0")}`);
-} else if (cmd === "forget") {
-  const site = canon(arg);
-  const reg = load();
-  if (!reg[site]) { console.error(`no reservation for '${site}'`); process.exit(1); }
-  const freed = reg[site].port; delete reg[site]; save(reg);
-  console.log(`released '${site}' (was :${freed}). Its login profile is kept; next open reassigns a port.`);
-} else if (cmd === "list" || !cmd) {
-  const reg = load();
-  const rows = [];
-  for (const [site, v] of Object.entries(reg)) rows.push({ site, port: v.port, up: await portUp(v.port), profileDir: v.profileDir });
-  rows.sort((a, b) => a.port - b.port);
-  console.log("  SITE          PORT    STATUS    PROFILE");
-  for (const r of rows) console.log(`  ${r.site.padEnd(12)}  :${r.port}   ${r.up ? "● up  " : "○ down"}    ${r.profileDir}`);
-  console.log(`\n  registry: ${REGISTRY}`);
-} else {
-  console.error("usage: instances.mjs resolve <site> [port] | list | forget <site>");
+try {
+  if (cmd === "resolve") {
+    const r = await resolve(arg, portArg);
+    console.log(`export LOOP_CDP_PORT=${shq(r.port)}`);
+    console.log(`export LOOP_PROFILE_DIR=${shq(r.profileDir)}`);
+    console.log(`export LOOP_LABEL=${shq("loop-browser-" + r.site)}`);
+    console.log(`LOOP_SITE=${shq(r.site)}`);
+    console.log(`LOOP_RUNNING=${shq(r.running ? "1" : "0")}`);
+  } else if (cmd === "forget") {
+    const site = canon(arg);
+    const freed = await withLock(async () => {
+      const reg = load();
+      if (!reg[site]) return null;
+      const f = reg[site].port; delete reg[site]; save(reg);
+      return f;
+    });
+    if (freed == null) { console.error(`no reservation for '${site}'`); process.exit(1); }
+    console.log(`released '${site}' (was :${freed}). Its login profile is kept; next open reassigns a port.`);
+  } else if (cmd === "list" || !cmd) {
+    const reg = load();
+    const rows = [];
+    for (const [site, v] of Object.entries(reg)) rows.push({ site, port: v.port, up: await portUp(v.port), profileDir: v.profileDir });
+    rows.sort((a, b) => a.port - b.port);
+    console.log("  SITE          PORT    STATUS    PROFILE");
+    for (const r of rows) console.log(`  ${r.site.padEnd(12)}  :${r.port}   ${r.up ? "● up  " : "○ down"}    ${r.profileDir}`);
+    console.log(`\n  registry: ${REGISTRY}`);
+  } else {
+    console.error("usage: instances.mjs resolve <site> [port] | list | forget <site>");
+    process.exit(1);
+  }
+} catch (e) {
+  console.error("✗ " + (e?.message || e));   // clean one-line error (e.g. port exhaustion) instead of a raw stack
   process.exit(1);
 }

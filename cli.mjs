@@ -401,8 +401,9 @@ try {
     default:
       console.log(
         "commands: open <url> | fill <label> <text> | click <text> | press <key> | read | snapshot\n" +
-          "          run <recipe> key=value ... | serve <recipe> [pantry=<dir>] [force=1]\n" +
-          "          recipes | author <name> \"<goal>\" | shot-os [name] | os-dismiss [n] | setup | start | privacy"
+          "          shot [name] | click-xy <x> <y> | shot-os [name] | os-dismiss [n] | mop\n" +
+          "          scrape-members <group> | run <recipe> key=value ... | serve <recipe> [pantry=<dir>] [force=1]\n" +
+          "          recipes | author <name> \"<goal>\" | setup | start | privacy"
       );
   }
   if (!process.exitCode) console.log("✓ done — look at the window.");

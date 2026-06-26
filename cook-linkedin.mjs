@@ -80,8 +80,10 @@ function armFileChooser(page) {
   if (armedPages.has(page)) return;
   armedPages.add(page);
   page.on("filechooser", async (fc) => {
-    if (!pendingUploadImage) return;            // only during an upload window
-    try { await fc.setFiles(pendingUploadImage); } catch {}
+    const img = pendingUploadImage;             // capture + consume once: a stray chooser
+    if (!img) return;                           // (e.g. during the fallback window) can't
+    pendingUploadImage = null;                  // reattach a stale file after this fires
+    try { await fc.setFiles(img); } catch {}
   });
 }
 

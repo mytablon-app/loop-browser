@@ -46,7 +46,7 @@ loop recipes
 
 **Why clone instead of an installer?** The repo is the *living* method library — `git pull` gets you the latest recipes, cuisine packs, and engine fixes, and you can contribute your own heals back; a frozen download can't do either. Stay current with `git pull && npm install`.
 
-**First run — log in once (your key).** In the Loop Browser window, go to the site you want to automate and sign in normally — e.g. type `web.whatsapp.com` in the address bar and scan the QR with your phone. Your session is saved to a **local, gitignored** profile (`.loop-profile/`), so you stay logged in across launches. Nobody else ever sees it.
+**First run — log in once (your key).** In the Loop Browser window, go to the site you want to automate and sign in normally — e.g. type `web.whatsapp.com` in the address bar and scan the QR with your phone. Your session is saved to a **local, never-committed** profile — the OS app-data dir (macOS `~/Library/Application Support/Loop Browser`, Windows `%APPDATA%\Loop Browser`, Linux `~/.config/Loop Browser`), or a per-site dir under `~/.loop-profiles/<site>/` when you use `instance.sh`. Either way you stay logged in across launches, and nobody else ever sees it.
 
 > Tip: `npm link` once, then use `loop …` anywhere instead of `node cli.mjs …`.
 
@@ -104,7 +104,7 @@ CLI also has: `loop recipes` (list), `loop author <name> "<goal>"` (capture a pa
 
 ## 🔐 Your data & logins never leave your machine
 
-Gitignored, always local: your login profile (`.loop-profile/`), cooked dishes (`dishes/`, `*-members.csv`), and failure screenshots (`runs/`). Loop Browser keeps the *tool and recipes* — never your sessions, ingredients, or output.
+Always local, never committed: your login profile (the OS app-data dir, or `~/.loop-profiles/<site>/` with `instance.sh`), cooked dishes (`dishes/`, `*-members.csv`), and failure screenshots (`runs/`). Loop Browser keeps the *tool and recipes* — never your sessions, ingredients, or output.
 
 ## License
 
