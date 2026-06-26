@@ -63,6 +63,7 @@ A real kitchen has a *brigade de cuisine* — a chain of roles. Loop fills these
 | 🧺 **Porter** | `porter.mjs` | Gathers ingredients off the hot path (files, profiles, messages). |
 | 🛟 **Sous Chef** | The Guardian | On a break: retry → self-heal → write an incident → stop. |
 | 🧹 **Mopper** | `loop mop` | Tidies up after a cook: close stray modals, wipe scratch, health-check. |
+| 🎩 **Maître d'** | `scripts/instances.mjs` | Keeps the reservation book: seats each restaurant at its permanent address (port) with its own keys (login), never double-books. |
 | 🔥 **Stove** | `lib.mjs` | The engine: connect, find elements, run the step primitives. |
 
 The **Service Log** (`dishes/service-log.json`) is the kitchen's ticket record — every dish
@@ -83,8 +84,16 @@ across all of them.
 
 ### Running several restaurants at once
 
-Each site runs as its own **instance**: **one site ↔ one CDP port ↔ one login profile.** You don't
-manage ports by hand — the **instance registry** does it:
+Each restaurant gets its own **premises and keys**: the **port** is the restaurant's permanent
+street address (how a Line Cook walks into *that* kitchen and no other — the number itself is
+meaningless, it just has to be stable), and the **login profile** is the keys and the safe for that
+building. One site ↔ one address ↔ one set of keys.
+
+That address is **reserved for life** — like a lease. Close LinkedIn for the night (shut the
+instance down) and its address still belongs to LinkedIn; open WhatsApp and it gets its *own*
+address down the street, never moving into LinkedIn's empty spot. The **Maître d'**
+(`scripts/instances.mjs`) holds the reservation book that makes this happen — you don't manage
+ports by hand:
 
 ```sh
 source scripts/instance.sh linkedin    # remembered → :9222, reuses your login
