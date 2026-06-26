@@ -2,11 +2,13 @@
 // macOS Dock / menu bar / Finder all show our name instead of "Electron".
 // (The packaged app uses electron-builder's productName; this is for source runs.)
 //
-// Patching the Info.plist alone is NOT enough: when the Dock's cache is stale it
-// falls back to the .app FOLDER name and the EXECUTABLE name — both "Electron" —
-// so this also renames the bundle folder + the inner binary and repoints
-// electron's path.txt. Runs on every launch via lib.mjs maybeRebrand(); the heavy
-// pass is cached behind a version+schema marker so repeat launches are fast.
+// Patching the Info.plist alone isn't enough: when the Dock's cache is stale it
+// falls back to the .app FOLDER name ("Electron"), so this also renames the bundle
+// folder to "Loop Browser.app" and repoints electron's path.txt. The EXECUTABLE is
+// deliberately left named "Electron" — Electron derives app.isPackaged from the exe
+// basename (!= "electron" ⇒ packaged), so renaming it flips dev into packaged mode
+// (which wrongly fired the CLI-install prompt). Runs on every launch via lib.mjs
+// maybeRebrand(); the heavy pass is cached behind a version+schema marker.
 
 import { execSync } from "child_process";
 import { existsSync, copyFileSync, readFileSync, writeFileSync, mkdirSync, renameSync } from "fs";
@@ -18,9 +20,10 @@ const NAME = "Loop Browser";
 // Unique bundle id — stock Electron uses `com.github.Electron`, shared by every other
 // dev-Electron on the machine, so LaunchServices keeps resolving the name to "Electron".
 const BUNDLE_ID = "com.mytablon.loopbrowser";
-// Bump to force a re-apply over an existing marker. v3 = also rename the .app FOLDER
-// + the executable (the Dock falls back to those when its cache is stale — the real fix).
-const REBRAND_SCHEMA = "3";
+// Bump to force a re-apply over an existing marker. v4 = rename the .app FOLDER only
+// (NOT the executable — renaming it flips app.isPackaged true; v3 did this by mistake,
+// so v4 also undoes any prior exe rename).
+const REBRAND_SCHEMA = "4";
 
 const dist = path.join(root, "node_modules", "electron", "dist");
 const OLD_APP = path.join(dist, "Electron.app");
@@ -61,18 +64,19 @@ if (existsSync(markerPath()) && readFileSync(markerPath(), "utf8").trim() === wa
   process.exit(0);
 }
 
-// --- Deep rename: folder + executable, so NOTHING on disk is named "Electron" ---
+// --- Rename the .app FOLDER only (the Dock's name fallback). Leave the executable
+// named "Electron" so app.isPackaged stays false in dev; undo any prior exe rename. ---
 if (app === OLD_APP) {
   try { renameSync(OLD_APP, APP_DIR); app = APP_DIR; plist = path.join(app, "Contents", "Info.plist"); }
   catch (e) { console.error("rebrand: rename .app failed —", e.message); }
 }
 try {
   const macos = path.join(app, "Contents", "MacOS");
-  const from = path.join(macos, "Electron"), to = path.join(macos, NAME);
-  if (existsSync(from) && !existsSync(to)) renameSync(from, to);
+  const orig = path.join(macos, "Electron"), renamed = path.join(macos, NAME);
+  if (existsSync(renamed) && !existsSync(orig)) renameSync(renamed, orig); // undo v3's exe rename
 } catch {}
-// repoint electron's path.txt at the renamed bundle+binary so require("electron") resolves
-try { writeFileSync(pathTxt, `${NAME}.app/Contents/MacOS/${NAME}`); } catch {}
+// repoint electron's path.txt at the renamed FOLDER (exe name unchanged) so require resolves
+try { writeFileSync(pathTxt, `${NAME}.app/Contents/MacOS/Electron`); } catch {}
 
 function plistSet(key, value) {
   try {
@@ -86,8 +90,8 @@ function plistSet(key, value) {
 
 plistSet("CFBundleName", NAME);
 plistSet("CFBundleDisplayName", NAME);
-plistSet("CFBundleIdentifier", BUNDLE_ID); // unique id → no LaunchServices collision with stock Electron
-plistSet("CFBundleExecutable", NAME);      // match the renamed executable
+plistSet("CFBundleIdentifier", BUNDLE_ID);  // unique id → no LaunchServices collision with stock Electron
+plistSet("CFBundleExecutable", "Electron"); // keep the real binary name → app.isPackaged stays false in dev
 
 // swap the app icon (dock / Finder) to the Loop icon
 try {
