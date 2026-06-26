@@ -56,32 +56,60 @@ async function findAddMedia(page) {
   }).catch(() => null);
 }
 
-async function uploadPhoto(page, image) {
-  await page.getByLabel(/Text editor for creating content/i).first().waitFor({ state: "visible", timeout: 12000 });
-  const coords = await findAddMedia(page);
-  if (!coords) throw new Error("Add media button not found");
-  // Prefer the file-chooser intercept (no native dialog). Fall back to setting the
-  // file on the hidden media input + escaping the native picker the click popped.
-  try {
-    const [fc] = await Promise.all([
-      page.waitForEvent("filechooser", { timeout: 7000 }),
-      page.mouse.click(coords.cx, coords.cy),
-    ]);
-    await fc.setFiles(image);
-  } catch {
-    let ready = false;
-    for (let w = 0; w < 16 && !ready; w++) { ready = await page.evaluate(() => !!document.getElementById("media-editor-file-selector__file-input")).catch(() => false); if (!ready) await sleep(500); }
-    const h = ready ? await page.$("#media-editor-file-selector__file-input") : null;
-    if (h) await h.setInputFiles(image); else { escapeNativePicker(); throw new Error("upload: no chooser + no hidden input"); }
-    escapeNativePicker();
-  }
-  await sleep(2500);
-  const rendered = await page.waitForFunction(() => {
+// Did the media editor render (i.e. did our image land)? "Alternative text" /
+// "Edit background" only exist once a photo is attached.
+async function imageRendered(page, timeout = 15000) {
+  return page.waitForFunction(() => {
     const ok = (b) => /^(Alternative text|Edit background)$/i.test((b.textContent || b.getAttribute("aria-label") || "").trim());
     function walk(root) { for (const b of root.querySelectorAll("button")) if (ok(b) && b.offsetParent !== null) return true; for (const el of root.querySelectorAll("*")) if (el.shadowRoot && walk(el.shadowRoot)) return true; return false; }
     return walk(document);
-  }, { timeout: 15000 }).then(() => true).catch(() => false);
-  if (!rendered) throw new Error("upload: image did not render");
+  }, { timeout }).then(() => true).catch(() => false);
+}
+
+// Persistent file-chooser interception — the fix for the recurring stranded native
+// macOS picker. LinkedIn's composer pops the OS file dialog on an add-media click.
+// The old per-click `waitForEvent("filechooser", {timeout:7000})` was a RACE: when
+// the event didn't reach Playwright inside the window, the click had already opened
+// the native dialog (invisible to CDP), and the osascript-Escape fallback didn't
+// reliably close it → "millionth time" stuck picker. A page-level handler instead
+// catches the chooser WHENEVER it fires (no window) and sets the file programmatically
+// so the native dialog never shows. armFileChooser is idempotent per page.
+let pendingUploadImage = null;
+const armedPages = new WeakSet();
+function armFileChooser(page) {
+  if (armedPages.has(page)) return;
+  armedPages.add(page);
+  page.on("filechooser", async (fc) => {
+    if (!pendingUploadImage) return;            // only during an upload window
+    try { await fc.setFiles(pendingUploadImage); } catch {}
+  });
+}
+
+async function uploadPhoto(page, image) {
+  await page.getByLabel(/Text editor for creating content/i).first().waitFor({ state: "visible", timeout: 12000 });
+  armFileChooser(page);
+  const coords = await findAddMedia(page);
+  if (!coords) throw new Error("Add media button not found");
+  // Open the upload window: the persistent handler fills any chooser this click
+  // triggers — no per-click race. Belt-and-suspenders: if the chooser never reaches
+  // Playwright (a true Electron-native dialog), set the hidden media input directly
+  // and dismiss the stranded native picker.
+  pendingUploadImage = image;
+  try {
+    await page.mouse.click(coords.cx, coords.cy);
+    await sleep(2500);
+    let rendered = await imageRendered(page);
+    if (!rendered) {
+      let ready = false;
+      for (let w = 0; w < 16 && !ready; w++) { ready = await page.evaluate(() => !!document.getElementById("media-editor-file-selector__file-input")).catch(() => false); if (!ready) await sleep(500); }
+      const h = ready ? await page.$("#media-editor-file-selector__file-input") : null;
+      if (h) { await h.setInputFiles(image); rendered = await imageRendered(page); }
+      escapeNativePicker();                     // clear any stranded native dialog
+    }
+    if (!rendered) throw new Error("upload: image did not render");
+  } finally {
+    pendingUploadImage = null;                  // close the upload window
+  }
 }
 
 // Back out of the tag panel until the media editor's "Next" is reachable again —
@@ -235,6 +263,7 @@ while (posted < MAX) {
     console.error(`✗ FAIL: ${t.name} — ${e.message.slice(0, 140)}`);
     recordDish(DISH, { target: t.name, slug: t.slug, file: t.file, status: "failed", error: e.message.slice(0, 140) });
     // Capture the stuck state, then just tidy the composer — stay on the posts page (no /feed/ bounce).
+    escapeNativePicker(); // a failed upload may have stranded a CDP-invisible native picker — clear it first
     try { ({ page } = await activePage(b)); await page.screenshot({ path: `runs/scratch/cook-fail-${t.slug || posted}.png` }).catch(() => {}); await tidy(page); } catch {}
     if (consec >= MAX_CONSEC_FAILS) { console.error(`\n■ STOPPED — ${consec} consecutive fails`); break; }
     await sleep(10000);
