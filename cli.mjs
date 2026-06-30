@@ -19,6 +19,7 @@ import { fileURLToPath } from "url";
 import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers, ensureBrowser, isBrowserUp, installSkill, profileDir, dirInfo, fmtBytes, sleep } from "./lib.mjs";
 import { pickNextTicket, slugOf } from "./porter.mjs";
 import { recordDish, servedSet, logPath as serviceLogPath } from "./servicelog.mjs";
+import { openChatExact, readRecent, sendMessage, listChats, unreadChats, withLock } from "./wa.mjs";
 
 const RECIPES_DIR = new URL("./recipes/", import.meta.url);
 const LOCAL_DIR = new URL("./recipes/local/", import.meta.url);
@@ -288,6 +289,22 @@ try {
     case "snapshot":
       await runStep(page, { do: "snapshot" });
       break;
+    case "frames": {
+      // Diagnostic: where does a modal live? Lists every frame, flags which holds a
+      // dialog + its content size — so "the modal is in iframe [2]" is one glance.
+      // (If NO frame shows the modal, it's a NATIVE OS dialog → use shot-os / filechooser.)
+      const frames = page.frames();
+      console.log(`  · ${frames.length} frame(s):`);
+      for (const [i, f] of frames.entries()) {
+        const main = f === page.mainFrame() ? " (main)" : "";
+        let chars = 0, dialog = false;
+        try { chars = await f.locator("body").evaluate((b) => b.innerText.length).catch(() => 0); } catch {}
+        try { dialog = (await f.locator('[role="dialog"], dialog, [aria-modal="true"]').first().count()) > 0; } catch {}
+        console.log(`    [${i}]${main}${dialog ? " ▣ dialog" : ""}  ${(f.url() || "about:blank").slice(0, 90)}  (${chars} chars)`);
+      }
+      console.log(`  → read one with: loop snapshot   (now includes iframes)`);
+      break;
+    }
     case "shot": {
       // Vision fallback (gap #4): capture a screenshot the brain (Claude Code) can
       // LOOK at to read coordinates for elements absent from the accessibility tree.
@@ -335,6 +352,55 @@ try {
       const { count, expected, undercooked, path } = await harvestMembers(page, { group, outDir });
       console.log(`  · scrape-members "${group}" → ${count}/${expected ?? "?"} members → ${path}`);
       if (undercooked) console.error(`  ⚠ undercooked: only ${count} of ${expected}`);
+      break;
+    }
+
+    // ---- WhatsApp primitives (wa.mjs) — fast task pickup, guardrails baked in.
+    // All hold the "reply" lock for the duration so they're first-class lock citizens
+    // (gatekeep defers; no silent collision with the crons).
+    case "wa-open": {                 // loop wa-open "Exact Chat Title"
+      const title = rest.join(" ");
+      const name = await withLock("reply", () => openChatExact(page, title));
+      console.log(`  · opened exactly: ${name}`);
+      break;
+    }
+    case "read-chat":
+    case "wa-read": {                 // loop read-chat "Title" [N]
+      const nArg = Number(rest[rest.length - 1]);
+      const hasN = Number.isFinite(nArg) && String(rest[rest.length - 1]).match(/^\d+$/);
+      const n = hasN ? nArg : 15;
+      const title = (hasN ? rest.slice(0, -1) : rest).join(" ");
+      const { count, messages } = await withLock("reply", () =>
+        readRecent(page, title, n, { owner: process.env.LOOP_WA_OWNER }));
+      console.log(`  · ${title} — last ${messages.length} of ${count} loaded:`);
+      for (const m of messages) {
+        const t = m.date ? m.date.toISOString().slice(5, 16).replace("T", " ") : "?";
+        console.log(`    [${t}] ${m.dir === "me" ? "ME  " : "THEM"}: ${m.text.slice(0, 240)}`);
+      }
+      break;
+    }
+    case "wa-send":
+    case "send-wa": {                 // loop wa-send "Title" "message text"
+      const title = rest[0];
+      const text = rest.slice(1).join(" ");
+      if (!title || !text) throw new Error('usage: loop wa-send "<chat title>" "<message>"');
+      const { ok, lastBubble } = await withLock("reply", () => sendMessage(page, title, text));
+      console.log(ok ? `  ✓ sent to ${title}: ${JSON.stringify(text)}`
+                     : `  ⚠ send NOT verified — last bubble was ${JSON.stringify(lastBubble)}`);
+      if (!ok) process.exitCode = 1;
+      break;
+    }
+    case "wa-chats": {                // loop wa-chats [limit]
+      const lim = Number(rest[0]) || 40;
+      const chats = await withLock("reply", () => listChats(page, lim));
+      for (const c of chats) console.log(`    ${c.unread ? "●"+String(c.unread).padEnd(2) : "   "} ${c.title}`);
+      console.log(`  · ${chats.length} chats`);
+      break;
+    }
+    case "wa-unread": {               // loop wa-unread
+      const chats = await withLock("reply", () => unreadChats(page));
+      if (!chats.length) console.log("  · no unread chats");
+      for (const c of chats) console.log(`    ●${c.unread}  ${c.title}  —  ${c.preview.slice(0, 80)}`);
       break;
     }
 

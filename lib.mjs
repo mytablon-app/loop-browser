@@ -333,6 +333,84 @@ export async function findClickable(page, text, { timeout = 25000 } = {}) {
   throw new Error(`Nothing clickable matching "${text}" (waited ${timeout}ms)`);
 }
 
+// Find a clickable that is actually VISIBLE and ON-SCREEN — the cure for icon-button flakiness.
+// findClickable returns the FIRST DOM match, which on WhatsApp (and many SPAs) can be a PHANTOM
+// off-screen duplicate (negative-y) → the click fires into nothing. Here we skip hidden/off-screen
+// matches and prefer getByRole(button/link) so we click the real button, not a child <span>/<svg>.
+async function findClickableVisible(page, text, { timeout = 8000 } = {}) {
+  const re = new RegExp(escapeRegExp(text), "i");
+  const deadline = Date.now() + timeout;
+  do {
+    for (const c of [page.getByRole("button", { name: re }), page.getByRole("link", { name: re }), page.getByText(re)]) {
+      const n = Math.min(await c.count(), 12);
+      for (let i = 0; i < n; i++) {
+        const e = c.nth(i);
+        if (!(await e.isVisible().catch(() => false))) continue;        // skip hidden phantoms
+        const b = await e.boundingBox().catch(() => null);
+        if (b && b.width > 0 && b.height > 0 && b.y > -20 && b.x > -20) return e;  // skip off-screen phantoms
+      }
+    }
+    await sleep(300);
+  } while (Date.now() < deadline);
+  return await findClickable(page, text);                                // fall back (may be phantom, but try)
+}
+
+// Count VISIBLE overlays currently open (modals, menus, dropdowns) — the generic "did something
+// open?" signal. We compare before/after a click to confirm an icon button actually fired.
+const openState = (page) => page.evaluate(() => {
+  const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none"; };
+  let n = 0;
+  document.querySelectorAll('[role="dialog"],[role="menu"],[role="listbox"],[aria-modal="true"]').forEach((e) => { if (vis(e)) n++; });
+  return n;
+});
+
+async function waitOpened(page, el, before, expanded0, opens, timeout) {
+  const deadline = Date.now() + timeout;
+  do {
+    if ((await openState(page)) > before) return true;                  // a new modal/menu appeared
+    if (expanded0 !== null) {                                           // an expander button flipped open
+      const e = await el.getAttribute("aria-expanded").catch(() => null);
+      if (e === "true" && expanded0 !== "true") return true;
+    }
+    if (opens && opens !== "auto" && opens !== "dialog" && opens !== "menu") {
+      if (await page.getByText(new RegExp(escapeRegExp(opens), "i")).first().count().catch(() => 0)) return true;
+    }
+    await sleep(150);
+  } while (Date.now() < deadline);
+  return false;
+};
+
+// Robust click for icon / phantom-prone buttons. Targets the VISIBLE on-screen element and the
+// real button (not a child), then CONFIRMS something opened. It only ESCALATES (re-clicks via
+// other strategies) when an open was genuinely EXPECTED but didn't happen — `opens` was given, or
+// the control carries aria-expanded. Plain buttons (send/toggle) get a single click and are NEVER
+// re-clicked, so there's no double-action risk. This automates the manual "retry and watch" loop.
+export async function clickRobust(page, target, { opens = null, timeout = 1500 } = {}) {
+  const el = await findClickableVisible(page, target);
+  await highlight(el).catch(() => {});
+  await el.scrollIntoViewIfNeeded().catch(() => {});
+  const expanded0 = await el.getAttribute("aria-expanded").catch(() => null);
+  const before = await openState(page);
+  await el.click({ timeout: 8000 });
+  const expectsOpen = !!opens || expanded0 !== null;
+  if (await waitOpened(page, el, before, expanded0, opens, timeout)) return { ok: true, opened: true, strategy: "click" };
+  if (!expectsOpen) return { ok: true, opened: false, strategy: "click" };   // no signal to confirm → assume fine, never re-click
+  // expected an open but got nothing — escalate through alternative click strategies
+  for (const strat of ["box", "pointer"]) {
+    try {
+      if (strat === "box") {
+        const b = await el.boundingBox();
+        if (b) await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+      } else {
+        for (const ev of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) await el.dispatchEvent(ev).catch(() => {});
+      }
+    } catch {}
+    if (await waitOpened(page, el, before, expanded0, opens, timeout)) return { ok: true, opened: true, strategy: strat };
+  }
+  return { ok: false, opened: false, strategy: "exhausted" };
+}
+
 // "Main match → mini match": open a search result (e.g. a WhatsApp chat) by name.
 // Search the FULL name first; if no matching result appears, progressively shorten
 // the search term (drop trailing words, down to the first name) until results show.
@@ -428,10 +506,12 @@ export async function runStep(page, step, vars = {}) {
       break;
     }
     case "click": {
-      const el = await findClickable(page, v(step.target));
-      await highlight(el);
-      await el.click();
-      console.log(`  · click "${v(step.target)}"`);
+      // clickRobust: visible/on-screen targeting (skips phantom dupes), real-button-not-child,
+      // and confirm-then-escalate when an open was expected. `opens` (optional) = a post-condition
+      // ("dialog"/"menu" or expected text) that turns on confirmation for this step.
+      const r = await clickRobust(page, v(step.target), { opens: step.opens || null });
+      console.log(`  · click "${v(step.target)}"${r.opened ? " ✓ opened" : ""}${r.strategy !== "click" ? ` (via ${r.strategy})` : ""}`);
+      if (!r.ok) throw new Error(`click "${v(step.target)}" issued but nothing opened (tried click→box→pointer)`);
       break;
     }
     case "open-chat":
@@ -484,8 +564,20 @@ export async function runStep(page, step, vars = {}) {
       // The Head Chef's eyes: the page as an accessibility tree (role + name),
       // the exact vocabulary recipes target with. No pixels, pure structure.
       console.log(`= ${await page.title()} — ${page.url()}\n`);
-      const tree = await page.locator("body").ariaSnapshot();
-      console.log(tree);
+      console.log(await page.locator("body").ariaSnapshot());
+      // IFRAME-AWARE: many modals (compose-email overlays, embedded editors, media/upload
+      // widgets, payment frames) render INSIDE an <iframe> — which the top frame's body
+      // snapshot does NOT include. Walk child frames so those modals aren't invisible.
+      // (A NATIVE OS file picker is a different beast — outside the page entirely; use shot-os.)
+      for (const [i, f] of page.frames().filter((f) => f !== page.mainFrame()).entries()) {
+        let sub = "";
+        try { sub = await f.locator("body").ariaSnapshot(); } catch {}
+        const trimmed = (sub || "").trim();
+        if (trimmed && !/^- generic\b/.test(trimmed)) {     // skip empty / blank ad frames
+          console.log(`\n--- iframe [${i}] ${f.url().slice(0, 100)} ---`);
+          console.log(sub);
+        }
+      }
       break;
     }
     case "extract": {
@@ -604,7 +696,7 @@ export async function harvestMembers(page, { group, outDir }) {
   const seen = new Set();
   // Strip a leading "~" (display-name marker) and a trailing "Group admin" role
   // tag (the side panel concatenates it onto the name, sometimes with no space),
-  // and collapse whitespace. Keeps a contact's own name intact (e.g. "Rose Adhi Admin").
+  // and collapse whitespace. Keeps a contact's own name intact (e.g. one ending in "Admin").
   const clean = (s) =>
     s.replace(/^~\s*/, "").replace(/\s*Group admin\s*$/i, "").replace(/\s+/g, " ").trim();
   const collect = async () => {
