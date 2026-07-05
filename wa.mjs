@@ -32,7 +32,8 @@ export async function withLock(who, fn) {
 }
 
 // ---- date / direction parsing --------------------------------------------------------------
-// pre-plain-text renders as US M/D/Y on this account: "[11:29 am, 6/20/2026] Sender: "
+// pre-plain-text date order follows the ACCOUNT's locale (M/D/Y or D/M/Y) — the parser
+// below disambiguates when it can (first field > 12 → D/M/Y): "[11:29 am, 6/20/2026] Sender: "
 export function parsePre(pre) {
   const m = String(pre || "").match(/\[(\d{1,2}):(\d{2})(?:\s*([ap]m))?,\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\]/i);
   if (!m) return null;
@@ -128,13 +129,24 @@ export async function sendMessage(page, title, text) {
   await openChatExact(page, title);
   const input = await findInput(page, "Type a message");
   await input.click();
-  await input.pressSequentially(text, { delay: 35 });
+  // NEWLINE-SAFE: in the WA composer a raw Enter SENDS — typing text containing "\n"
+  // via pressSequentially would fire the message mid-sentence. Type line by line with
+  // Shift+Enter between, then one real Enter to send the whole message once.
+  const lines = String(text).split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i]) await input.pressSequentially(lines[i], { delay: 35 });
+    if (i < lines.length - 1) await page.keyboard.press("Shift+Enter");
+  }
   await sleep(400);
   await page.keyboard.press("Enter");
   await sleep(1500);
   const rows = classify(await grab(page), null);
   const last = rows[rows.length - 1];
-  const ok = !!last && last.dir === "me" && last.text.trim() === text.trim();
+  // VERIFY on whitespace-NORMALIZED text: the bubble reader collapses all whitespace
+  // (incl. our newlines) to single spaces — a raw compare false-negatives on any
+  // multi-line/multi-space message, and a false "not sent" invites a re-run = double-send.
+  const normWs = (s) => String(s || "").replace(/\s+/g, " ").trim();
+  const ok = !!last && last.dir === "me" && normWs(last.text) === normWs(text);
   return { ok, at: last?.date || null, lastBubble: last?.text || "" };
 }
 

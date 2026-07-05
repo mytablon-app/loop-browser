@@ -320,19 +320,31 @@ export async function findInput(page, label, { timeout = 25000 } = {}) {
   const capRe = cap && new RegExp(escapeRegExp(cap), "i");
   const deadline = Date.now() + timeout;
   do {
+    // NAMED candidates only while polling. Unnamed fallbacks (bare textbox/searchbox)
+    // used to be in this list — and returned INSTANTLY when the labelled field hadn't
+    // rendered yet but any textbox existed (e.g. the WhatsApp COMPOSE box while a panel
+    // loads; a following Enter would send to the chat). The label must stay binding
+    // for the full wait; unnamed is a logged LAST RESORT below, never a race winner.
     const candidates = [
       ...(capRe ? [page.getByLabel(capRe), page.getByPlaceholder(capRe), page.getByRole("textbox", { name: capRe })] : []),
       page.getByLabel(re),
       page.getByPlaceholder(re),
-      page.getByRole("searchbox"),
+      page.getByRole("searchbox", { name: re }),
       page.getByRole("textbox", { name: re }),
-      page.getByRole("textbox"),
     ];
     for (const c of candidates) {
       if (await c.first().count()) return c.first();
     }
     await sleep(500);
   } while (Date.now() < deadline);
+  // Deadline passed with no named match → try the unnamed generic inputs ONCE (a lone
+  // unlabeled search box is legitimate), loudly — then the deterministic heal.
+  for (const c of [page.getByRole("searchbox"), page.getByRole("textbox")]) {
+    if ((await c.count()) === 1) {
+      console.log(`  ⚠ no input NAMED "${label}" after ${timeout}ms — using the page's only ${(await c.first().getAttribute("role")) || "text"} input (unnamed last resort)`);
+      return c.first();
+    }
+  }
   const healed = await healFind(page, label, '[role="textbox"],[role="searchbox"],input,[contenteditable="true"]', "input");
   if (healed) return healed;
   throw new Error(`No input matching "${label}" (waited ${timeout}ms)`);
@@ -413,7 +425,10 @@ async function waitOpened(page, el, before, expanded0, opens, timeout) {
 // other strategies) when an open was genuinely EXPECTED but didn't happen — `opens` was given, or
 // the control carries aria-expanded. Plain buttons (send/toggle) get a single click and are NEVER
 // re-clicked, so there's no double-action risk. This automates the manual "retry and watch" loop.
-export async function clickRobust(page, target, { opens = null, timeout = 1500 } = {}) {
+export async function clickRobust(page, target, { opens = null, timeout = 4000 } = {}) {
+  // timeout = how long to wait for the expected open before ESCALATING (re-clicking).
+  // 4s (was 1.5s): a slow modal must not read as "didn't fire" — escalation re-clicks,
+  // and a re-click on a button whose first click DID land is a double-action.
   const el = await findClickableVisible(page, target);
   await highlight(el).catch(() => {});
   await el.scrollIntoViewIfNeeded().catch(() => {});
@@ -480,8 +495,19 @@ export async function openChat(page, name, searchLabel = "Search or start a new 
       const el = page.locator('[data-loop-open="1"]').first();
       await highlight(el);
       await el.click();
+      // ASSERT the opened chat's header actually matches the requested name (≥60%
+      // word-overlap — tolerates a misspelled middle name, blocks a same-first-name
+      // stranger: "Ahmed Khan"→"Ahmed Ali" is 50% and must NOT pass). Without this,
+      // whatever the fuzzy row-click opened is silently cooked into.
+      await sleep(1200);
+      const header = (await page.$eval("#main header span[dir=auto]", (e) => e.innerText).catch(() => "")).trim();
+      const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+      const tw = norm(name).split(" ").filter(Boolean);
+      const hw = new Set(norm(header).split(" "));
+      const overlap = tw.length ? tw.filter((w) => hw.has(w)).length / tw.length : 0;
+      if (overlap < 0.6) throw new Error(`open-chat: opened "${header || "?"}" but wanted "${name}" (${Math.round(overlap * 100)}% match) — refusing to cook into the wrong chat`);
       const mini = term === name ? "" : ` (mini match — searched "${term}")`;
-      console.log(`  · open-chat "${name}" → ${Math.round(score * 100)}% match${mini}`);
+      console.log(`  · open-chat "${name}" → header "${header}" ✓ (${Math.round(overlap * 100)}% match${mini})`);
       return;
     }
   }
@@ -542,7 +568,14 @@ export async function runStep(page, step, vars = {}) {
       // ("dialog"/"menu" or expected text) that turns on confirmation for this step.
       const r = await clickRobust(page, v(step.target), { opens: step.opens || null });
       console.log(`  · click "${v(step.target)}"${r.opened ? " ✓ opened" : ""}${r.strategy !== "click" ? ` (via ${r.strategy})` : ""}`);
-      if (!r.ok) throw new Error(`click "${v(step.target)}" issued but nothing opened (tried click→box→pointer)`);
+      if (!r.ok) {
+        // The click WAS issued (possibly several strategies) — only the expected open
+        // wasn't observed. Retrying the whole step would CLICK AGAIN on a button whose
+        // click may have landed (double-post risk) → mark non-retryable for withRetry.
+        const err = new Error(`click "${v(step.target)}" issued but nothing opened (tried click→box→pointer) — NOT retried (the click may have landed)`);
+        err.noRetry = true;
+        throw err;
+      }
       break;
     }
     case "open-chat":
@@ -570,7 +603,7 @@ export async function runStep(page, step, vars = {}) {
       break;
     case "assert": {
       const found = await page
-        .getByText(new RegExp(v(step.text), "i"))
+        .getByText(new RegExp(escapeRegExp(v(step.text)), "i"))   // literal text — "(1)" must not parse as a regex group
         .first()
         .count();
       if (!found) throw new Error(`assert failed — "${v(step.text)}" not on page`);
@@ -654,6 +687,7 @@ export async function withRetry(fn, { tries = 3, delay = 600 } = {}) {
     try {
       return await fn();
     } catch (e) {
+      if (e && e.noRetry) throw e;   // non-idempotent step already acted (e.g. a click landed) — never re-run
       last = e;
       if (i < tries) await sleep(delay * i);
     }

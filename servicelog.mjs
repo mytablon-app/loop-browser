@@ -9,8 +9,13 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const LOG = path.join(process.cwd(), "dishes", "service-log.json");
+// Anchored to the APP ROOT (this module's dir), NOT process.cwd(): a cron or a
+// `loop serve` run from another directory must hit the SAME ledger — a cwd-relative
+// path forks the book into an empty one and the dedup guard silently re-cooks
+// (double-post). Same anchoring as lib.mjs's incident files.
+const LOG = path.join(path.dirname(fileURLToPath(import.meta.url)), "dishes", "service-log.json");
 
 export function logPath() { return LOG; }
 

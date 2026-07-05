@@ -18,7 +18,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers, ensureBrowser, isBrowserUp, installSkill, profileDir, dirInfo, fmtBytes, sleep } from "./lib.mjs";
 import { pickNextTicket, slugOf } from "./porter.mjs";
-import { recordDish, servedSet, logPath as serviceLogPath } from "./servicelog.mjs";
+import { recordDish, readLog, logPath as serviceLogPath } from "./servicelog.mjs";
 import { recordRun, isGraduated, reopenStats, readStats, GRADUATE_N } from "./stats.mjs";
 import { openChatExact, readRecent, sendMessage, listChats, unreadChats, withLock } from "./wa.mjs";
 
@@ -71,7 +71,11 @@ async function runRecipe(page, recipe, vars, name) {
     } catch (e) {
       const wasGrad = isGraduated(name, recipe.version);
       reopenStats(name);                                                  // any break → back to probation
-      const shot = await captureFailure(page, `${name}-fail-step${i + 1}`);
+      // Evidence capture must never REPLACE the real step error — if the shot or the
+      // incident write itself throws, log and continue with what we have.
+      let shot = "(shot failed)";
+      try { shot = await captureFailure(page, `${name}-fail-step${i + 1}`); }
+      catch (ce) { console.error(`  (captureFailure failed: ${ce.message})`); }
       if (wasGrad) {
         // A graduated recipe breaking is a REGRESSION, not a routine heal — do NOT
         // auto-write a brain brief; require a deliberate re-run to re-invite the Head Chef.
@@ -84,7 +88,9 @@ async function runRecipe(page, recipe, vars, name) {
         process.exitCode = 1;
         return false;
       }
-      const incident = await captureIncident(page, { recipe: name, stepIndex: i, step, vars, error: e, shot });
+      let incident = "(incident write failed)";
+      try { incident = await captureIncident(page, { recipe: name, stepIndex: i, step, vars, error: e, shot }); }
+      catch (ce) { console.error(`  (captureIncident failed: ${ce.message})`); }
       console.error(`\n✗ step ${i + 1}/${recipe.steps.length} (${step.do}) BROKE after retries`);
       console.error(`  reason   : ${e.message}`);
       console.error(`  url      : ${page.url()}`);
@@ -514,8 +520,13 @@ try {
       const pantry = (opts.pantry || t.pantry || "./pantry").replace(/\{TODAY\}/g, today);
       if (!existsSync(pantry)) throw new Error(`pantry not found: ${pantry}`);
 
-      // Dedup against the Service Log (the Expediter's book) — by /in/ slug.
-      const done = force ? new Set() : servedSet(name, "slug");
+      // Dedup against the Service Log (the Expediter's book) — by slug AND file, over ALL
+      // attempts (not just "served"): a "failed" that actually landed (the publish-confirm
+      // false-negative) must NOT auto-re-post. Retrying a genuine failure is the human's
+      // call: verify the feed, then force=1. Null-slug tickets (/company/ URLs) dedup by file.
+      const done = new Set();
+      if (!force)
+        for (const e of readLog()[name] || []) { if (e.slug) done.add(e.slug); if (e.file) done.add(e.file); }
 
       // The Porter gathers the next un-served ticket's ingredients (off the hot path).
       const ticket = pickNextTicket(pantry, done);

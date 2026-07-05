@@ -13,8 +13,11 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const STATS = path.join(process.cwd(), "dishes", "recipe-stats.json");
+// Anchored to the APP ROOT like the Service Log — cwd-relative state forks per
+// working directory (a cron would re-probate a graduated recipe from scratch).
+const STATS = path.join(path.dirname(fileURLToPath(import.meta.url)), "dishes", "recipe-stats.json");
 
 // How many consecutive clean runs earn graduation. Env override, else 5 — above the
 // default retry count (3) so luck can't graduate a recipe, below 10 so an active recipe
