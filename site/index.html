@@ -258,6 +258,70 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 .foot .brand{font-size:1rem}
 .foot .sep{margin-left:auto;font-family:var(--mono);color:var(--muted)}
 .foot a{color:var(--muted);text-decoration:none}.foot a:hover{color:var(--text)}
+
+/* ============ GLASS UPGRADE — futuristic minimal glass ============
+   Three moves, in order of importance:
+   1. AURAS — faint light fields behind sections, so backdrop-blur finally
+      has something to refract (glass over flat black reads as gray boxes).
+   2. One GLASS RECIPE for every panel: gradient fill + blur+saturate +
+      inner top highlight. Same material everywhere = the "system" feel.
+   3. One SIGNATURE: a slow conic light sweeping the Get-Loop card's border.
+      Everything else stays quiet on purpose. */
+:root{
+  --glass:linear-gradient(165deg,rgba(255,255,255,.09),rgba(255,255,255,.028) 42%,rgba(255,255,255,.05));
+  --glass-border:rgba(255,255,255,.13);
+  --glass-hi:rgba(255,255,255,.10);
+}
+html[data-theme="light"]{
+  --glass:linear-gradient(165deg,rgba(255,255,255,.92),rgba(255,255,255,.55) 45%,rgba(255,255,255,.78));
+  --glass-border:rgba(15,23,42,.12);
+  --glass-hi:rgba(255,255,255,.95);
+}
+
+/* 1 · auras (z-index:-1 sits behind content, above the page bg) */
+html,body{overflow-x:clip}   /* clip (not hidden): off-edge auras must not widen the document */
+.cost,#how,#kitchen,#menu,#privacy,#why,#start,#download{position:relative}
+.cost::before,#kitchen::before,#menu::before,#privacy::before,#why::before,#start::before{
+  content:"";position:absolute;z-index:-1;width:620px;height:620px;border-radius:50%;
+  pointer-events:none;opacity:.75}
+.cost::before{top:-4%;right:-7%;background:radial-gradient(circle,var(--glow2) 0%,transparent 62%)}
+#kitchen::before{top:14%;right:-9%;background:radial-gradient(circle,var(--glow2) 0%,transparent 62%)}
+#menu::before{top:6%;left:-9%;background:radial-gradient(circle,var(--glow) 0%,transparent 62%)}
+#privacy::before{top:-8%;right:-6%;background:radial-gradient(circle,var(--glow) 0%,transparent 62%)}
+#why::before{top:4%;left:-8%;background:radial-gradient(circle,var(--glow2) 0%,transparent 62%)}
+#start::before{top:12%;right:-8%;background:radial-gradient(circle,var(--glow) 0%,transparent 62%)}
+
+/* 2 · the glass material (one recipe, everywhere) */
+.card,.step,.get-card,.ledger,.menu,.cost .cost-fig,.howx .howx-step{
+  background:var(--glass);
+  border:1px solid var(--glass-border);
+  backdrop-filter:blur(18px) saturate(1.45);-webkit-backdrop-filter:blur(18px) saturate(1.45);
+  box-shadow:inset 0 1px 0 var(--glass-hi),0 22px 50px -30px rgba(0,0,0,.55)}
+html[data-theme="light"] .card,html[data-theme="light"] .step,html[data-theme="light"] .get-card,
+html[data-theme="light"] .ledger,html[data-theme="light"] .menu,
+html[data-theme="light"] .cost .cost-fig,html[data-theme="light"] .howx .howx-step{
+  box-shadow:inset 0 1px 0 var(--glass-hi),0 22px 45px -32px rgba(30,50,90,.38)}
+.step,.get-card,.howx .howx-step{transition:transform .25s,border-color .25s}
+.step:hover,.get-card:hover,.howx .howx-step:hover{transform:translateY(-2px);border-color:var(--border-strong)}
+nav{backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5)}
+.download{background:radial-gradient(700px 300px at 50% 0%,var(--glow),transparent 70%),var(--glass)}
+
+/* 3 · the signature: light sweeping the Get-Loop border */
+@property --ga{syntax:'<angle>';inherits:false;initial-value:0deg}
+.download{border-color:transparent}
+.download::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+  background:conic-gradient(from var(--ga),var(--glass-border) 0turn,#818cf8 .10turn,#22d3ee .16turn,var(--glass-border) .28turn,var(--glass-border) 1turn);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  animation:ga-rot 10s linear infinite;pointer-events:none}
+@keyframes ga-rot{to{--ga:1turn}}
+@media(prefers-reduced-motion:reduce){.download::before{animation:none}}
+
+/* hairline seams between sections + keyboard focus (quality floor) */
+section+section::after{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:min(1120px,88%);height:1px;background:linear-gradient(90deg,transparent,var(--border-strong),transparent)}
+section+section{position:relative}
+a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:6px}
 </style>
 </head>
 <body>
