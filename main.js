@@ -44,7 +44,7 @@ const HOME = path.join(__dirname, "ui", "home.html");
 const VERSION = require("./package.json").version;
 // "About Loop Browser" instead of "About Electron" (the menu/About panel when running unpackaged).
 app.setAboutPanelOptions({ applicationName: "Loop Browser", applicationVersion: VERSION, version: "" });
-const DOWNLOAD_URL = "https://loop-browser.vercel.app"; // where app users grab the new DMG/EXE
+const DOWNLOAD_URL = "https://loop-browser.com"; // where app users grab the new DMG/EXE
 const ICON = path.join(__dirname, "assets", "loop-dock-icon.png");
 const DARK = "#0a0e1a";
 const LIGHT = "#f5f6fb";
