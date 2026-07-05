@@ -316,6 +316,22 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     .cx-pct{fill:var(--ai);font-family:var(--body);font-size:13px;font-weight:700}
     .cx-lead{stroke:var(--faint);stroke-width:1;stroke-dasharray:2 3}
     .cx-free{fill:var(--cyan);opacity:.07}
+    :root{--loopc:#0891b2;--agentc:#f43f5e}
+    html[data-theme="light"]{--loopc:#0369a1;--agentc:#e11d48}
+    .cost2{margin-top:56px}
+    .cost2 .mini{text-align:center;max-width:640px;margin:0 auto 22px}
+    .cost2 .mini .eyebrow{margin-bottom:8px}
+    .cost2 h3{font-family:var(--display);font-weight:700;font-size:clamp(1.2rem,2.6vw,1.6rem);letter-spacing:-.01em;margin-bottom:8px}
+    .cost2 .mini p{color:var(--muted);font-size:.98rem}
+    .cx-legend{display:flex;gap:22px;justify-content:center;margin-bottom:14px;font-family:var(--body);font-size:.86rem;color:var(--muted)}
+    .cx-legend span{display:inline-flex;align-items:center;gap:7px}
+    .cx-legend i{width:16px;height:3px;border-radius:2px;display:inline-block}
+    .cx-agent{fill:none;stroke:var(--agentc);stroke-width:2.6;stroke-linecap:round}
+    .cx-loop{fill:none;stroke:var(--loopc);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+    .cx-loopdot{fill:var(--loopc);stroke:var(--panel-2);stroke-width:2}
+    .cx-break{stroke:var(--faint);stroke-width:1;stroke-dasharray:3 3}
+    .cx-agentlabel{fill:var(--agentc);font-family:var(--body);font-size:12px;font-weight:700}
+    .cx-looplabel{fill:var(--loopc);font-family:var(--body);font-size:12px;font-weight:700}
   </style>
   <div class="wrap">
     <div class="head">
@@ -374,6 +390,58 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
       </svg>
       <figcaption>Bold curve = the outcome (AI &#8594; 0). Faint line = the actual runs and their healing spikes.</figcaption>
     </figure>
+
+    <div class="cost2">
+      <div class="mini">
+        <div class="eyebrow">In dollars</div>
+        <h3>The same decay, priced.</h3>
+        <p>A typical agent re-thinks the task every run. Loop pays once to author, then almost nothing.</p>
+      </div>
+      <div class="cx-legend">
+        <span><i style="background:var(--agentc)"></i>Typical agent — pays every run</span>
+        <span><i style="background:var(--loopc)"></i>Loop — author once, heal rarely</span>
+      </div>
+      <figure class="cost-fig">
+        <svg viewBox="0 0 840 380" role="img" aria-labelledby="cyT cyD">
+          <title id="cyT">Cumulative cost versus number of times a task has run</title>
+          <desc id="cyD">A typical agent's cost rises in a straight line because it re-reasons every run. Loop's cost starts at a one-time authoring cost and only steps up slightly at rare heals, crossing far below the agent's line by run ten and staying there.</desc>
+
+          <line class="cx-grid" x1="52" y1="36"  x2="816" y2="36"/>
+          <line class="cx-grid" x1="52" y1="110" x2="816" y2="110"/>
+          <line class="cx-grid" x1="52" y1="184" x2="816" y2="184"/>
+          <line class="cx-grid" x1="52" y1="258" x2="816" y2="258"/>
+          <text class="cx-tick" x="44" y="40"  text-anchor="end">$8</text>
+          <text class="cx-tick" x="44" y="114" text-anchor="end">$6</text>
+          <text class="cx-tick" x="44" y="188" text-anchor="end">$4</text>
+          <text class="cx-tick" x="44" y="262" text-anchor="end">$2</text>
+          <text class="cx-tick" x="44" y="336" text-anchor="end">$0</text>
+          <text class="cx-title" transform="translate(10,184) rotate(-90)" text-anchor="middle">cumulative cost</text>
+
+          <line class="cx-axis" x1="52" y1="332" x2="816" y2="332"/>
+          <text class="cx-tick" x="52"  y="352" text-anchor="middle">1</text>
+          <text class="cx-tick" x="228" y="352" text-anchor="middle">10</text>
+          <text class="cx-tick" x="424" y="352" text-anchor="middle">20</text>
+          <text class="cx-tick" x="620" y="352" text-anchor="middle">30</text>
+          <text class="cx-tick" x="816" y="352" text-anchor="middle">40</text>
+          <text class="cx-title" x="434" y="374" text-anchor="middle">times the task runs &#8594;</text>
+
+          <line class="cx-break" x1="228.31" y1="36" x2="228.31" y2="332"/>
+
+          <path class="cx-agent" d="M52 324.6 L816 36"/>
+          <path class="cx-loop" d="M52 258 L228.31 258 L228.31 250.6 L424.21 250.6 L424.21 243.2 L620.1 243.2 L620.1 235.8 L816 235.8"/>
+
+          <circle class="cx-loopdot" cx="52" cy="258" r="3.6"/>
+          <circle class="cx-loopdot" cx="228.31" cy="250.6" r="3.6"/>
+          <circle class="cx-loopdot" cx="424.21" cy="243.2" r="3.6"/>
+          <circle class="cx-loopdot" cx="620.1" cy="235.8" r="3.6"/>
+
+          <text class="cx-agentlabel" x="700" y="60">$8.00</text>
+          <text class="cx-looplabel" x="700" y="222">$2.60</text>
+          <text class="cx-note-sm" x="234" y="28">breakeven ~run 10</text>
+        </svg>
+        <figcaption>Illustrative: agent &#8776; $0.20/run (re-reasons every time) &middot; Loop = $2 one-time author + 3 small heals. Real costs vary by model, task &amp; provider.</figcaption>
+      </figure>
+    </div>
   </div>
 </section>
 
