@@ -1,14 +1,33 @@
 {
   "name": "demo-search",
+  "site": "wikipedia.org",
   "title": "Wikipedia search (demo)",
   "description": "Search Wikipedia for a term — the hello-world recipe that proves a saved recipe replays with no LLM.",
   "version": "1.0.0",
-  "ingredients": { "term": "Playwright automation" },
+  "verifiedOn": "2026-07-05",
+  "ingredients": {
+    "term": "Playwright automation"
+  },
   "steps": [
-    { "do": "open",  "url": "https://en.wikipedia.org/wiki/Main_Page" },
-    { "do": "fill",  "target": "search", "value": "{term}" },
-    { "do": "press", "key": "Enter" },
-    { "do": "wait",  "ms": 1500 },
-    { "do": "read" }
+    {
+      "do": "open",
+      "url": "https://en.wikipedia.org/wiki/Main_Page"
+    },
+    {
+      "do": "fill",
+      "target": "search",
+      "value": "{term}"
+    },
+    {
+      "do": "press",
+      "key": "Enter"
+    },
+    {
+      "do": "wait",
+      "ms": 1500
+    },
+    {
+      "do": "read"
+    }
   ]
 }

@@ -1,23 +1,53 @@
 {
   "name": "scrape-group-members",
+  "site": "web.whatsapp.com",
   "title": "WhatsApp group → contacts",
+  "description": "Export every member of a WhatsApp group — names and numbers, any group size — into a CSV you keep locally. Deterministic, no LLM.",
   "version": "1.1.1",
   "updated": "2026-06-17",
-  "description": "Export every member of a WhatsApp group — names and numbers, any group size — into a CSV you keep locally. Deterministic, no LLM.",
   "_needs": "INGREDIENTS (you pass at cook time, never stored here): group = the group's exact name. KEY (you provide once, inside Loop — never in this file): a logged-in web.whatsapp.com session. This file is the METHOD only — fully generic and safe to share. Cook it: loop run scrape-group-members group=\"Your Group\".",
   "ingredients": {
     "group": "<your group name here>",
     "outDir": "./dishes"
   },
   "steps": [
-    { "do": "open",  "url": "https://web.whatsapp.com" },
-    { "do": "wait",  "ms": 3000 },
-    { "do": "fill",  "target": "Search or start a new chat", "value": "{group}" },
-    { "do": "wait",  "ms": 2000 },
-    { "do": "click", "target": "{group}" },
-    { "do": "wait",  "ms": 2000 },
-    { "do": "click", "target": "Profile details" },
-    { "do": "wait",  "ms": 2500 },
-    { "do": "scrape-members", "group": "{group}", "outDir": "{outDir}" }
+    {
+      "do": "open",
+      "url": "https://web.whatsapp.com"
+    },
+    {
+      "do": "wait",
+      "ms": 3000
+    },
+    {
+      "do": "fill",
+      "target": "Search or start a new chat",
+      "value": "{group}"
+    },
+    {
+      "do": "wait",
+      "ms": 2000
+    },
+    {
+      "do": "click",
+      "target": "{group}"
+    },
+    {
+      "do": "wait",
+      "ms": 2000
+    },
+    {
+      "do": "click",
+      "target": "Profile details"
+    },
+    {
+      "do": "wait",
+      "ms": 2500
+    },
+    {
+      "do": "scrape-members",
+      "group": "{group}",
+      "outDir": "{outDir}"
+    }
   ]
 }

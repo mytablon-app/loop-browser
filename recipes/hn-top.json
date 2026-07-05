@@ -1,17 +1,34 @@
 {
   "name": "hn-top",
+  "site": "news.ycombinator.com",
   "title": "Hacker News → CSV",
+  "description": "Extract Hacker News front-page stories (title, url) into a CSV. A non-WhatsApp cuisine that proves the generic `extract` primitive.",
   "version": "1.0.0",
   "updated": "2026-06-17",
-  "description": "Extract Hacker News front-page stories (title, url) into a CSV. A non-WhatsApp cuisine that proves the generic `extract` primitive.",
-  "ingredients": { "outDir": "./dishes" },
+  "ingredients": {
+    "outDir": "./dishes"
+  },
   "steps": [
-    { "do": "open", "url": "https://news.ycombinator.com" },
-    { "do": "wait", "ms": 1500 },
+    {
+      "do": "open",
+      "url": "https://news.ycombinator.com"
+    },
+    {
+      "do": "wait",
+      "ms": 1500
+    },
     {
       "do": "extract",
       "rows": "span.titleline",
-      "fields": { "title": { "sel": "a" }, "url": { "sel": "a", "attr": "href" } },
+      "fields": {
+        "title": {
+          "sel": "a"
+        },
+        "url": {
+          "sel": "a",
+          "attr": "href"
+        }
+      },
       "name": "hn-top",
       "outDir": "{outDir}",
       "min": 10

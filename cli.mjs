@@ -131,8 +131,9 @@ if (cmd === "recipes" || cmd === "flows") {
         ? `· graduated ✓ (${e.runs} runs, ${e.heals} heals)`
         : `· ${e.cleanStreak}/${N} to graduation (${e.runs} runs, ${e.heals} heals)`;
     else if (e) tag = "· edited → re-probation";
-    const title = (recipe.title || recipe.description || "").slice(0, 34);
-    console.log(`  • ${recipe.name.padEnd(24)} ${title.padEnd(36)} ${tag}`);
+    const title = (recipe.title || recipe.description || "").slice(0, 30);
+    const site = (recipe.site || "?").slice(0, 20);
+    console.log(`  • ${recipe.name.padEnd(24)} ${site.padEnd(21)} ${title.padEnd(32)} ${tag}`);
   }
   process.exit(0);
 }
