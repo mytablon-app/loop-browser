@@ -10,12 +10,18 @@ import { servedSet, recordDish, logPath } from "./servicelog.mjs";
 
 const DISH = "linkedin-connect";
 // Run params overridable by env so the committed driver stays generic (no personal
-// specifics): CONNECT_KEYWORDS=founder, CONNECT_NOTELESS=1 (skip the note → faster).
+// specifics): CONNECT_KEYWORDS=founder, CONNECT_NOTELESS=1 (skip the note → faster),
+// CONNECT_NOTE="your own invite text" (REQUIRED for noted invites — no shipped default;
+// outward copy is the owner's voice, never baked into a public file).
 const KEYWORDS = process.env.CONNECT_KEYWORDS || "investor";
 const NOTELESS = !!process.env.CONNECT_NOTELESS;
 const GEO_UAE = "%5B%22104305776%22%5D";       // ["104305776"] = United Arab Emirates
 const NETWORK_2ND = "%5B%22S%22%5D";            // ["S"] = 2nd degree
-const NOTE = "Inviting you to Tablon, an exclusive community for serious investors & founders. Would love to have you ❤️";
+const NOTE = process.env.CONNECT_NOTE || "";
+if (!NOTELESS && !NOTE) {
+  console.error("✗ set CONNECT_NOTE=\"your invite text\" (or CONNECT_NOTELESS=1 to send without a note) — the driver ships no default outreach copy.");
+  process.exit(1);
+}
 const MAX = parseInt(process.argv[2] || "100", 10);
 const MAX_PAGES = 12;
 const MAX_CONSEC_FAILS = 3;

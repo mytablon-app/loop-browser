@@ -41,6 +41,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks')}catch(e){}\"",
     "prestart": "node scripts/rebrand-electron.mjs",
     "start": "electron .",
     "cli": "node cli.mjs",

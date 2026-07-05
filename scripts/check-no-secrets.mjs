@@ -1,16 +1,21 @@
 #!/usr/bin/env node
-// Publish guard — refuses to publish if anything private or secret would ship.
+// Publish + commit guard — refuses to ship anything private or secret.
 //
-// Runs as `prepublishOnly`, so it gates BOTH a manual `npm publish` AND the CI
-// Trusted-Publishing workflow. Belt-and-suspenders on top of the package.json
-// "files" allowlist and .npmignore: even if those are misconfigured, this aborts
-// the publish before a single byte leaves the machine.
+// TWO MODES:
+//   (default)  publish guard: runs as `prepublishOnly`, scans the npm-pack file set.
+//   --staged   COMMIT guard: runs from .githooks/pre-commit, scans every STAGED file
+//              (the git path is the primary distribution channel — clone-only — and
+//              git-tracked files OUTSIDE the npm allowlist were previously unguarded).
+//              Adds personal-data patterns (emails, absolute home paths, phone-like
+//              numbers) and an optional LOCAL denylist of owner-specific terms:
+//              site-memories/local/private-terms.txt (gitignored — one term per line,
+//              case-insensitive; real names/ids live THERE, never in this public file).
 //
 // Blocks on: login profiles, cooked dishes, run screenshots, PRIVATE recipes
 // (recipes/local/), env files — and any token / key / password baked into a
 // shipped file. The recipe TRAVELS; the meal, the pantry, and the key stay home.
 import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 
 const FORBIDDEN_PATHS = [
   [/(^|\/)\.loop-profile\//, "login profile (the key)"],
@@ -33,6 +38,51 @@ const SECRET_PATTERNS = [
   [/["'](?:authToken|password|client_secret|api[_-]?key)["']\s*[:=]\s*["'][^"'{}\s]{8,}["']/i, "hardcoded credential"],
 ];
 
+// --staged mode only: personal-data patterns for public git files. Kept conservative
+// to avoid false positives; owner-specific literals belong in the LOCAL denylist.
+const PERSONAL_PATTERNS = [
+  [/[a-zA-Z0-9._%+-]+@(?!(?:example|schema|w3|githubusercontent)\.)[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/, "email address"],
+  [/(?:\/Users\/|\/home\/|C:\\+Users\\+)[a-zA-Z]/, "absolute home path"],
+  [/\+\d{9,}/, "phone-like number"],
+];
+const BINARY_EXT = /\.(png|jpe?g|gif|webp|ico|icns|svg|woff2?|ttf|dmg|exe|zip|pdf|mp4)$/i;
+const DENYLIST_FILE = "site-memories/local/private-terms.txt";
+
+const STAGED = process.argv.includes("--staged");
+const problems = [];
+
+if (STAGED) {
+  // Commit guard: scan the STAGED content (the index, not the worktree) of every staged file.
+  let staged = [];
+  try {
+    staged = execSync("git diff --cached --name-only --diff-filter=ACM", { encoding: "utf8" }).split("\n").filter(Boolean);
+  } catch (e) { console.error("commit guard: not a git repo?", e.message); process.exit(0); }
+  const deny = existsSync(DENYLIST_FILE)
+    ? readFileSync(DENYLIST_FILE, "utf8").split("\n").map((t) => t.trim()).filter((t) => t && !t.startsWith("#"))
+    : [];
+  for (const p of staged) {
+    for (const [re, label] of FORBIDDEN_PATHS) if (re.test(p)) problems.push(`staging ${label}: ${p}`);
+    if (BINARY_EXT.test(p)) continue;
+    let content;
+    try { content = execSync(`git show :"${p}"`, { encoding: "utf8", maxBuffer: 16e6 }); } catch { continue; }
+    if (content.includes("\0")) continue;                                  // binary without a known extension
+    for (const [re, label] of [...SECRET_PATTERNS, ...PERSONAL_PATTERNS])
+      if (re.test(content)) problems.push(`${label} in staged ${p}  (match: "${String(content.match(re)[0]).slice(0, 40)}")`);
+    for (const term of deny) {
+      const i = content.toLowerCase().indexOf(term.toLowerCase());
+      if (i >= 0) problems.push(`private term (local denylist) in staged ${p}`);
+    }
+  }
+  if (problems.length) {
+    console.error("\n⛔  COMMIT BLOCKED — private/secret content staged:\n");
+    for (const x of problems) console.error("   • " + x);
+    console.error("\nMove personal data to recipes/local/ / site-memories/local/ (gitignored), or\nadjust the file. Emergency bypass (be sure!): git commit --no-verify\n");
+    process.exit(1);
+  }
+  console.log(`✓ commit guard: ${staged.length} staged file(s) clean.`);
+  process.exit(0);
+}
+
 let files;
 try {
   files = JSON.parse(execSync("npm pack --dry-run --json", { encoding: "utf8" }))[0].files.map((f) => f.path);
@@ -41,7 +91,6 @@ try {
   process.exit(1);
 }
 
-const problems = [];
 for (const p of files) {
   for (const [re, label] of FORBIDDEN_PATHS) if (re.test(p)) problems.push(`would ship ${label}: ${p}`);
 }
