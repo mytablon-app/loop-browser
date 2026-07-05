@@ -317,7 +317,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     .cx-tick{fill:var(--faint);font-family:var(--mono);font-size:12px}
     .cx-title{fill:var(--muted);font-family:var(--body);font-size:13px;font-weight:600}
     .cx-spikes{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round;opacity:.7}
-    .cx-trend{fill:none;stroke:var(--ai);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 3px var(--ai)) drop-shadow(0 0 7px var(--ai))}
+    .cx-trend{fill:none;stroke:var(--ai);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
     .cx-dot{fill:var(--ai);stroke:var(--panel-2);stroke-width:2}
     .cx-note{fill:var(--text);font-family:var(--body);font-size:13px;font-weight:700}
     .cx-note-sm{fill:var(--muted);font-family:var(--body);font-size:12px;font-weight:500}
@@ -364,11 +364,11 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
         <text class="cx-title" x="434" y="374" text-anchor="middle">times the task runs &#8594;</text>
 
         <!-- trend area (the outcome) -->
-        <path fill="url(#costGrad)" d="M52 332 L52 36 C110.77 85.33 169.54 148.23 228.31 184 C293.61 223.74 358.91 235.80 424.21 258 C489.51 280.20 554.80 308.61 620.1 317.2 C685.40 325.79 750.70 323.84 816 326.08 L816 332 Z"/>
+        <path fill="url(#costGrad)" d="M52 332 L52 36 C58.53 71.24 65.06 115.75 71.59 141.71 C78.12 167.68 84.65 178.57 91.18 191.79 C97.71 205.00 104.24 213.41 110.77 221 C123.83 236.18 136.89 245.24 149.95 253.65 C163.01 262.06 176.07 266.77 189.13 271.45 C208.72 278.47 228.31 282.85 247.9 286.85 C274.02 292.18 300.14 295.29 326.26 298.28 C358.91 302.01 391.56 304.26 424.21 306.38 C469.92 309.34 515.62 311.11 561.33 312.83 C607.04 314.55 652.75 315.61 698.46 316.69 C737.64 317.62 776.82 318.19 816 318.94 L816 332 Z"/>
         <!-- thin: actual per-run usage (healing spikes) -->
         <path class="cx-spikes" d="M52 36 C58.53 127.76 65.06 297.98 71.59 311.28 C78.12 324.58 84.65 323.90 91.18 324.6 C104.24 326.01 117.30 328.45 130.36 328.45 C149.95 328.45 169.54 328.45 189.13 327.56 C202.19 326.97 215.25 184.00 228.31 184 C234.84 184.00 241.37 316.46 247.9 320.16 C260.96 327.56 274.02 327.35 287.08 327.56 C306.67 327.88 326.26 328.20 345.85 328.45 C365.44 328.70 385.03 329.04 404.62 329.04 C411.15 329.04 417.68 258.00 424.21 258 C430.74 258.00 437.26 321.35 443.79 323.12 C463.38 328.45 482.97 328.29 502.56 328.45 C522.15 328.61 541.74 329.04 561.33 329.04 C580.92 329.04 600.51 317.20 620.1 317.2 C626.63 317.20 633.16 327.07 639.69 327.56 C659.28 329.04 678.87 329.04 698.46 329.04 C711.52 329.04 724.58 317.20 737.64 317.2 C744.17 317.20 750.70 328.06 757.23 328.45 C776.82 329.63 796.41 329.55 816 329.63"/>
         <!-- bold: AI reliance decaying to zero (the result) -->
-        <path class="cx-trend" d="M52 36 C110.77 85.33 169.54 148.23 228.31 184 C293.61 223.74 358.91 235.80 424.21 258 C489.51 280.20 554.80 308.61 620.1 317.2 C685.40 325.79 750.70 323.84 816 326.08"/>
+        <path class="cx-trend" d="M52 36 C58.53 71.24 65.06 115.75 71.59 141.71 C78.12 167.68 84.65 178.57 91.18 191.79 C97.71 205.00 104.24 213.41 110.77 221 C123.83 236.18 136.89 245.24 149.95 253.65 C163.01 262.06 176.07 266.77 189.13 271.45 C208.72 278.47 228.31 282.85 247.9 286.85 C274.02 292.18 300.14 295.29 326.26 298.28 C358.91 302.01 391.56 304.26 424.21 306.38 C469.92 309.34 515.62 311.11 561.33 312.83 C607.04 314.55 652.75 315.61 698.46 316.69 C737.64 317.62 776.82 318.19 816 318.94"/>
 
         <circle class="cx-dot" cx="52" cy="36" r="3.6"/>
         <circle class="cx-dot" cx="228.31" cy="184" r="3.6"/>
