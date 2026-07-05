@@ -225,6 +225,39 @@ export async function pageFor(browser, pattern, { front = false } = {}) {
 }
 // Background-safe click: dispatch the DOM click on the element a locator resolves to. Works on a
 // non-fronted tab where locator.click() times out on actionability. Pass a Playwright locator.
+// THE ENSURE-TAB GUARD. A site's tab can silently die (window closed, crash, thrash) —
+// the instance then sits on the home view and every automation against it fails
+// SILENTLY (drives home.html, finds nothing, exits non-fatally). Seen live 2026-07-05
+// on BOTH the WhatsApp and LinkedIn instances at once. Call this at the top of any
+// cron/driver/verb that assumes its site is open:
+//   • finds an existing tab for the site's host (no focus steal — cron-safe), else
+//   • re-points a CONTENT tab at the url (NEVER opens a 2nd tab — single-session sites
+//     like WhatsApp reject duplicates; the session persists in the profile, no re-login),
+//   • then waits for `ready` (a selector that proves the site is usable, e.g. WA's chat list).
+export async function ensureSiteTab(browser, url, { ready = null, timeoutMs = 45000 } = {}) {
+  const want = new URL(url).hostname.replace(/^www\./, "");
+  const all = browser.contexts().flatMap((c) => c.pages());
+  const onSite = (p) => { try { return new URL(p.url()).hostname.replace(/^www\./, "").endsWith(want); } catch { return false; } };
+  let page = all.find(onSite);
+  if (!page) {
+    // Reuse a real content tab if one exists; else the home view; never the toolbar/splash.
+    const contentish = all.filter((p) => !/^about:/.test(p.url()) && !p.url().includes("/ui/toolbar.html") && !p.url().includes("/ui/splash.html"));
+    page = contentish.find((p) => !p.url().includes("/ui/")) || contentish[0];
+    if (!page) throw new Error(`ensureSiteTab: no content tab to reuse for ${want} — is the browser up?`);
+    console.log(`  ⚠ no ${want} tab — reopening ${url} (session persists in the profile)`);
+    await page.goto(url, { waitUntil: "domcontentloaded" }).catch(() => {});
+  }
+  if (ready) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await page.locator(ready).first().count().catch(() => 0)) return page;
+      await sleep(700);
+    }
+    throw new Error(`ensureSiteTab: ${want} is open but not ready ("${ready}") after ${timeoutMs}ms`);
+  }
+  return page;
+}
+
 export async function bgClick(locator) { await locator.evaluate((el) => el.click()); }
 // Background-safe type: focus the element, clear it, then type via CDP keyboard (works unfronted).
 export async function bgType(page, locator, text) {

@@ -20,7 +20,7 @@ import { connect, activePage, runStep, withRetry, captureFailure, captureInciden
 import { pickNextTicket, slugOf } from "./porter.mjs";
 import { recordDish, readLog, logPath as serviceLogPath } from "./servicelog.mjs";
 import { recordRun, isGraduated, reopenStats, readStats, GRADUATE_N } from "./stats.mjs";
-import { openChatExact, readRecent, sendMessage, listChats, unreadChats, withLock } from "./wa.mjs";
+import { openChatExact, readRecent, sendMessage, listChats, unreadChats, withLock, ensureWhatsApp } from "./wa.mjs";
 
 const RECIPES_DIR = new URL("./recipes/", import.meta.url);
 const LOCAL_DIR = new URL("./recipes/local/", import.meta.url);
@@ -326,8 +326,14 @@ if (cmd === "mop") {
 }
 
 const browser = await connect();
-const { page, contentCount } = await activePage(browser);
+let { page, contentCount } = await activePage(browser);
 console.log(`· driving the active tab · ${contentCount} tab${contentCount === 1 ? "" : "s"} open`);
+
+// Ensure-tab guard: the wa-* verbs assume WhatsApp Web is open. If its tab died, the
+// active tab is the HOME view and every verb fails silently against it (seen live on
+// both instances 2026-07-05). Re-point + wait for the chat list before proceeding.
+if (["wa-open", "read-chat", "wa-read", "wa-send", "send-wa", "wa-chats", "wa-unread"].includes(cmd))
+  page = await ensureWhatsApp(browser);
 
 try {
   switch (cmd) {

@@ -12,10 +12,20 @@
 //  · withLock        — participate in the runs/wa-<port>.lock convention so these primitives
 //                      are first-class lock citizens (ad-hoc scripts that skipped it collided
 //                      with the crons). Holds "reply" so gatekeep defers its next run.
-import { connect, activePage, findInput, sleep } from "./lib.mjs";
+import { connect, activePage, findInput, sleep, ensureSiteTab } from "./lib.mjs";
 import { readFileSync, writeFileSync, unlinkSync, statSync } from "fs";
 
 const SEARCH = "Search or start a new chat";
+
+// The WA ready signal: the chat list pane. (The QR/login screen and the home view
+// both lack it — so "ready" here also means "logged in and synced".)
+export const WA_READY = '#pane-side, [aria-label="Chat list"]';
+// Ensure-tab guard for WhatsApp — call at the top of every cron/verb that assumes WA
+// is open. Finds the existing WA tab (never a 2nd — WA is single-session), or re-points
+// a content tab at web.whatsapp.com (session persists, no QR) and waits for the chat list.
+export async function ensureWhatsApp(browser, { timeoutMs = 60000 } = {}) {
+  return ensureSiteTab(browser, "https://web.whatsapp.com", { ready: WA_READY, timeoutMs });
+}
 
 // ---- the shared instance lock (matches runs/wa-gatekeep.mjs convention) --------------------
 const lockPath = () => new URL(`./runs/wa-${process.env.LOOP_CDP_PORT || "9222"}.lock`, import.meta.url);
