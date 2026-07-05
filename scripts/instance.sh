@@ -41,9 +41,9 @@ mkdir -p "$LOOP_PROFILE_DIR"
 echo "▶ Loop instance '$LOOP_SITE'  ·  CDP :$LOOP_CDP_PORT  ·  profile $LOOP_PROFILE_DIR"
 if [ "${LOOP_RUNNING:-0}" = "1" ]; then
   echo "✓ already running on :$LOOP_CDP_PORT — reusing it (login preserved, no relaunch)."
-elif command -v loop >/dev/null 2>&1; then
-  loop start
 else
+  # ALWAYS the repo's own CLI — never a PATH `loop`: that can be a stale installed-app
+  # shim (a broken bundled CLI crashed exactly here once). We know the repo root; use it.
   node "$_lb_root/cli.mjs" start
 fi
 echo "✓ this terminal now drives the '$LOOP_SITE' browser — its login persists in its own profile."

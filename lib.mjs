@@ -74,9 +74,33 @@ export async function ensureBrowser({ timeoutMs = 30000 } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     await sleep(400);
-    if (await isBrowserUp()) return true;
+    if (await isBrowserUp()) { await waitForStableTab(); return true; }
   }
   throw new Error("Loop Browser didn't come up in time. Try `loop start`.");
+}
+
+// BOOT-RACE GUARD (fresh launches only): CDP answers before the splash/boot sequence
+// settles, and the transient first tab it shows gets REPLACED — a cook that connects
+// that instant drives a page that then closes ("Target … has been closed" mid-recipe,
+// seen live on a first-ever instance start). Wait until a CONTENT tab (not about:*,
+// not the toolbar) exists and is unchanged across two consecutive polls.
+async function waitForStableTab({ timeoutMs = 8000 } = {}) {
+  const sig = async () => {
+    try {
+      const r = await fetch(CDP_URL + "/json/list");
+      const tabs = (await r.json()).filter((t) => t.type === "page" && !/^about:/.test(t.url) && !t.url.includes("/ui/toolbar.html"));
+      return tabs.length ? tabs.map((t) => t.id + t.url).sort().join("|") : "";
+    } catch { return ""; }
+  };
+  const deadline = Date.now() + timeoutMs;
+  let prev = null;
+  while (Date.now() < deadline) {
+    const cur = await sig();
+    if (cur && cur === prev) return;   // settled: same content tab(s), two polls in a row
+    prev = cur;
+    await sleep(500);
+  }
+  // never throws — worst case we proceed after the cap, same as before the guard
 }
 
 // Where Electron stores this app's data (logins/cookies = "the key"), per OS.
