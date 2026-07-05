@@ -17,7 +17,11 @@ import { fileURLToPath } from "url";
 
 // Anchored to the APP ROOT like the Service Log — cwd-relative state forks per
 // working directory (a cron would re-probate a graduated recipe from scratch).
-const STATS = path.join(path.dirname(fileURLToPath(import.meta.url)), "dishes", "recipe-stats.json");
+// LOOP_DISHES_DIR overrides for tests, so a test run never touches the real ledger.
+const STATS = path.join(
+  process.env.LOOP_DISHES_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), "dishes"),
+  "recipe-stats.json"
+);
 
 // How many consecutive clean runs earn graduation. Env override, else 5 — above the
 // default retry count (3) so luck can't graduate a recipe, below 10 so an active recipe

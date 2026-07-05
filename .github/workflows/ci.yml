@@ -28,3 +28,20 @@ jobs:
         run: node scripts/check-no-secrets.mjs
       - name: Bundled-imports guard
         run: node scripts/check-bundled-imports.mjs
+
+  # The engine behavior suite (tests/run.mjs): self-heal, named-only input binding,
+  # iframe + shadow-DOM find/heal, upload interception, wait-for, graduation ledger.
+  # Needs a real chromium — installed standalone (no npm install: electron not needed).
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install playwright + chromium
+        run: |
+          npm i --no-save --ignore-scripts playwright playwright-core
+          npx playwright install --with-deps chromium
+      - name: Run engine test suite
+        run: npm test

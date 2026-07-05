@@ -46,6 +46,7 @@
     "prestart": "node scripts/rebrand-electron.mjs",
     "start": "electron .",
     "cli": "node cli.mjs",
+    "test": "node tests/run.mjs",
     "check:bundle": "node scripts/check-bundled-imports.mjs",
     "prepublishOnly": "node scripts/check-no-secrets.mjs && node scripts/check-bundled-imports.mjs",
     "install-skill": "node scripts/install-skill.mjs",
