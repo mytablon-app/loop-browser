@@ -290,9 +290,10 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <img src="loop-icon.svg" class="hero-logo rv d1" alt="Loop Browser" />
     <h1 class="rv d3">Command any site<br>from your <span class="g">CLI</span>.</h1>
     <p class="rv d3" style="font-size:clamp(1.1rem,2.2vw,1.45rem);font-weight:650;letter-spacing:-.01em;margin:0 auto 14px;max-width:620px">An AI browser that runs <span class="g">without AI</span>.</p>
-    <p class="lede rv d4">Turn repeating web tasks into <strong>bots</strong>. Written once with AI; replayed forever <strong class="g">without it</strong>.</p>
+    <p class="lede rv d4">Turn repeating web tasks into <strong>loops</strong>. Written once with AI; replayed forever <strong class="g">without it</strong>.</p>
     <div class="cta rv d5">
       <a href="#download" class="btn btn-primary">Get Loop ↓<span class="btn-beta">beta</span></a>
+      <a href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener" class="btn btn-ghost">View on GitHub ↗</a>
     </div>
     <div class="rv d6"><span class="dl-count" id="dl-count" style="display:none"><span class="pulse"></span><b id="dl-count-n">—</b>&nbsp;downloads</span></div>
   </div>
@@ -328,7 +329,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
       <div class="chapter">
         <div class="num">Chapter two · The kitchen</div>
         <p class="tale">So he built a <b>kitchen</b> and brought in a <b>head chef</b> who could cook anything he was asked.</p>
-        <p class="mean">The kitchen is <b>Loop Browser</b>; the head chef is the <b>CLI</b> you command — with an LLM (<span class="cc">Claude Code</span>) for a brain.</p>
+        <p class="mean">The kitchen is <b>Loop Browser</b>; the head chef is the <b>CLI</b> you command — with an <b>LLM</b> for a brain.</p>
       </div>
       <div class="chapter">
         <div class="num">Chapter three · The recipes</div>
@@ -421,10 +422,10 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <h2>Your first dish, in five steps.</h2>
     <p class="sub">What each piece is, and where to get it.</p>
     <div class="steps">
-      <div class="step"><div class="n">1</div><h3>Get Loop</h3><p>The kitchen — the glass browser you'll command. <code>git clone</code> the repo, <code>npm install</code>, and you're set.</p><a href="#download">How to install →</a></div>
-      <div class="step"><div class="n">2</div><h3>Get <span class="cc">Claude Code</span></h3><p>The chef's brain — the LLM that writes &amp; heals recipes, on your own subscription.</p><a href="https://claude.com/claude-code" target="_blank" rel="noopener">claude.com/claude-code →</a></div>
-      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>The command line you cook from — <code>loop run</code>, <code>loop author</code>. On your PATH after <code>npm link</code> (or run <code>node cli.mjs</code>).</p></div>
-      <div class="step"><div class="n">4</div><h3>Connect</h3><p>Launch Loop — it opens and listens on a local port. Every <code>loop</code> command (yours or Claude's) connects to it instantly. No config, no cloud.</p></div>
+      <div class="step"><div class="n">1</div><h3>Get Loop</h3><p>The kitchen — the glass browser you'll command. <code>git clone</code> it from GitHub and run the quick setup.</p><a href="#download">How to install →</a></div>
+      <div class="step"><div class="n">2</div><h3>Add a brain</h3><p>The chef's brain — an <b>LLM</b> that writes &amp; heals your recipes. Bring your own.</p></div>
+      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>The command line you cook from — <code>loop run</code>, <code>loop author</code>. On your PATH after setup (or run <code>node cli.mjs</code> from the repo).</p></div>
+      <div class="step"><div class="n">4</div><h3>Connect</h3><p>Launch Loop — it opens and listens on a local port. Every <code>loop</code> command (yours or the AI's) connects to it instantly. No config, no cloud.</p></div>
       <div class="step"><div class="n">5</div><h3>Cook</h3><p>Run a dish — <code>loop run hn-top</code> — or have the chef write one with <code>loop author</code>. Watch every step.</p></div>
     </div>
   </div>
@@ -435,25 +436,18 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <div class="download">
       <div class="eyebrow" style="color:var(--cyan)">Ready when you are</div>
       <h2>Get Loop Browser</h2>
-      <p class="sub center" style="margin-top:6px">Loop runs <strong>from the repo</strong> — clone it, install once, and you're set.</p>
+      <p class="sub center" style="margin-top:6px">Loop runs <strong>from the repo</strong> — the only way in is GitHub. Clone it and you're set.</p>
       <div class="get-grid" style="grid-template-columns:1fr;max-width:720px;margin-inline:auto">
 
         <div class="get-card">
-          <div class="get-tag">★ Clone &amp; run · the way in</div>
+          <div class="get-tag">★ Clone from GitHub · the only way in</div>
           <h3>Get it from GitHub</h3>
+          <a class="btn btn-primary" href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener" style="align-self:flex-start;margin:6px 0 20px">View on GitHub ↗</a>
           <div class="cmd-row">
             <span class="cmd-label">Clone</span>
             <div class="cmd"><code>git clone https://github.com/mytablon-app/loop-browser.git</code><button class="copy" data-copy="git clone https://github.com/mytablon-app/loop-browser.git" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
           </div>
-          <div class="cmd-row">
-            <span class="cmd-label">Install + link</span>
-            <div class="cmd"><code>cd loop-browser &amp;&amp; npm install &amp;&amp; npm link</code><button class="copy" data-copy="cd loop-browser && npm install && npm link" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
-          </div>
-          <div class="cmd-row">
-            <span class="cmd-label">Set up</span>
-            <div class="cmd"><code>loop setup</code><button class="copy" data-copy="loop setup" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
-          </div>
-          <p class="note" style="margin-top:14px">Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> + git. <code>npm install</code> pulls Electron on first run.</p>
+          <p class="note" style="margin-top:14px">Then finish setup in a few commands — full steps in the <a href="https://github.com/mytablon-app/loop-browser#quick-start" target="_blank" rel="noopener">README</a>. Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> + git.</p>
           <p class="note">It's a <b>living</b> library — <code>git pull</code> for the latest recipes &amp; fixes, and send your own back.</p>
         </div>
 
