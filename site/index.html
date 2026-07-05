@@ -245,7 +245,13 @@ html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 92%,transpar
 .get-card .note{max-width:none;margin-left:0;margin-right:0;text-align:left}
 .get-card .dl-meta{text-align:left}
 .cmd{display:inline-flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--border-strong);border-radius:12px;padding:9px 9px 9px 16px}
-.cmd code{background:none;border:none;padding:0;color:var(--text);font-size:1.02rem;white-space:nowrap}
+/* code gets its OWN scroll lane; the pill itself never scrolls (clips at its rounded
+   border) and the copy button lives outside that lane, so it can never be bled over by
+   the nowrap text — a squeezed flex item still renders its overflow:visible text past
+   its own shrunk box otherwise, which is what put the button on top of the text. */
+.cmd-scroll{flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.cmd-scroll::-webkit-scrollbar{display:none}
+.cmd code{background:none;border:none;padding:0;color:var(--text);font-size:1.02rem;white-space:nowrap;display:inline-block}
 .cmd .copy{display:grid;place-items:center;width:36px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer;transition:.18s;flex-shrink:0}
 .cmd .copy:hover{color:var(--text);border-color:var(--border-strong);transform:translateY(-1px)}
 .cmd .copy.ok{color:#28c840;border-color:#28c840}
@@ -253,8 +259,9 @@ html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 92%,transpar
 .copied.show{opacity:1}
 .cmd-row{margin-top:16px;min-width:0}
 .cmd-label{display:block;font-size:.78rem;color:var(--faint);margin-bottom:7px}
-.cmd{width:100%;max-width:100%;min-width:0;overflow-x:auto}
-.cmd code{flex:1;min-width:0}
+.cmd{width:100%;max-width:100%;min-width:0;overflow:hidden;position:relative}
+.cmd::after{content:"";position:absolute;top:1px;bottom:1px;right:47px;width:20px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--panel-2))}   /* fade hint: more text to scroll */
 
 footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 .foot{display:flex;align-items:center;gap:16px;flex-wrap:wrap;color:var(--faint);font-size:.88rem}
@@ -633,7 +640,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
           <a class="btn btn-primary" href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener" style="align-self:flex-start;margin:6px 0 20px">View on GitHub ↗</a>
           <div class="cmd-row">
             <span class="cmd-label">Clone</span>
-            <div class="cmd"><code>git clone https://github.com/mytablon-app/loop-browser.git</code><button class="copy" data-copy="git clone https://github.com/mytablon-app/loop-browser.git" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+            <div class="cmd"><div class="cmd-scroll"><code>git clone https://github.com/mytablon-app/loop-browser.git</code></div><button class="copy" data-copy="git clone https://github.com/mytablon-app/loop-browser.git" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
           </div>
           <p class="note" style="margin-top:14px">Then finish setup in a few commands — full steps in the <a href="https://github.com/mytablon-app/loop-browser#quick-start" target="_blank" rel="noopener">README</a>. Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> + git.</p>
           <p class="note">It's a <b>living</b> library — <code>git pull</code> for the latest recipes &amp; fixes, and send your own back.</p>
