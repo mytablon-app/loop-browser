@@ -77,6 +77,10 @@ node cli.mjs run scrape-group-members group="My Group Name"
 
 `group="My Group Name"` is your **ingredient** — passed at cook time, never stored. The **dish** lands in `./dishes/` (gitignored). For example, `scrape-group-members` harvests every member of a WhatsApp group into `dishes/<group>-members.csv` (`name,phone`), for any group size.
 
+> **Before your first real cook, skim [`PLAYBOOK.md`](PLAYBOOK.md)** — the field lessons
+> (how to diagnose a stuck cook, target elements safely, verify sends, handle uploads and
+> pacing). Every rule in it was paid for with a real failure so yours don't have to be.
+
 ## Recipes
 
 A recipe is a small JSON file in `recipes/`:

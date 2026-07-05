@@ -72,6 +72,7 @@ Step verbs: `open · fill · click · press · wait · assert · read · snapsho
 **Target by role/label/text, never coordinates** (`click-xy` = vision fallback only). Use `{placeholders}` for ingredients. `recipes/local/` = private overlay (real URLs/paths), shadows shipped templates; a `ticket` block + `loop serve` cooks from a pantry of tickets.
 
 ## Authoring & healing (the brain's two jobs)
+- **Read `PLAYBOOK.md` first for any unfamiliar flow** — the shipped field lessons (diagnosis ladder, targeting, verify-positive, uploads, pacing); it exists so cooks don't re-pay for known failures.
 - **Author:** `loop open` → `loop snapshot` (read real labels) → write `recipes/<name>.json` → `loop run` to test. (`loop author` scaffolds + captures a brief.) Read the site's cuisine pack first.
 - **Heal:** on a break the Guardian writes `runs/<recipe>-incident.json` (failing step + live a11y snapshot). Find the element there, patch that step's `target`, bump `version`, re-run.
 

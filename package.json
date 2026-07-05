@@ -38,6 +38,7 @@
     "site-memories/*.md",
     "skill/",
     "README.md",
+    "PLAYBOOK.md",
     "LICENSE"
   ],
   "scripts": {
@@ -75,6 +76,7 @@
       "recipes/**/*",
       "!recipes/local/**",
       "skill/**/*",
+      "PLAYBOOK.md",
       "site-memories/*.md",
       "!site-memories/local/**",
       "package.json",

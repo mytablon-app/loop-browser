@@ -184,6 +184,7 @@ loop for it — the work of Loop is turning each cook into that no-LLM replay.) 
 ## Where to go next
 
 - **`README.md`** — install and first run.
+- **`PLAYBOOK.md`** — the field lessons (diagnosis, targeting, verifying, pacing) — read before your first real cook.
 - **`CLAUDE.md`** — the precise operating spec (written for the AI, but the source of truth on rules).
 - **`recipes/`** — the saved methods. Open one; the JSON reads like a checklist.
 - **`site-memories/<domain>.md`** — the cuisine pack for each site.

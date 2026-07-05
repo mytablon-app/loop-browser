@@ -57,7 +57,8 @@ them current; there's no npm/download install). Tell them to clone and link it:
 - `loop scrape-members "<group>" [outDir]` — (WhatsApp-specific) harvest the open group's members → CSV.
 
 ## Authoring a recipe (your main job, as the brain)
-0. If a cuisine pack exists for the site (`site-memories/<domain>.md`), read it FIRST — it holds the known selectors/flow/quirks so you don't re-explore. That + the dish is your only context; don't carry unrelated memory into a cook.
+0. **Read `PLAYBOOK.md` (repo root) before cooking any unfamiliar flow** — the paid-for field lessons: the diagnosis ladder (snapshot → frames → shot → shot-os), target-by-name-never-first-match, verify-on-positive-signal, upload/file-picker handling, human pacing. It will save you the failures it was written from.
+0b. If a cuisine pack exists for the site (`site-memories/<domain>.md`), read it too — the known selectors/flow/quirks so you don't re-explore. Pack + playbook + the dish is your only context; don't carry unrelated memory into a cook.
 1. `loop open <url>` to the starting page, then `loop snapshot` to see the real role/name labels.
 2. (Optional) `loop author <name> "<goal>"` to capture a brief + scaffold the file.
 3. Write `recipes/<name>.json`:
