@@ -169,26 +169,23 @@ code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1p
   padding:1px 7px;border-radius:6px;color:var(--cyan)}
 
 /* get-started steps */
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:42px;text-align:left}
-@media(max-width:860px){.steps{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.steps{grid-template-columns:1fr}}
-.step{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:24px;transition:.25s;backdrop-filter:blur(10px)}
-.step:hover{transform:translateY(-4px);border-color:var(--border-strong);background:var(--panel-2)}
-.step .n{font-family:var(--display);font-weight:800;font-size:1.7rem;line-height:1;margin-bottom:12px;
-  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.step h3{font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;margin-bottom:7px}
-.step p{color:var(--muted);font-size:.93rem}
-.step a{display:inline-block;margin-top:12px;color:var(--cyan);text-decoration:none;font-weight:600;font-size:.9rem}
-.step a:hover{text-decoration:underline}
 
 /* terminal */
-.term{max-width:760px;margin:0 auto;border-radius:16px;border:1px solid var(--border-strong);background:color-mix(in srgb,#05080f 78%,transparent);
-  box-shadow:var(--shadow);overflow:hidden;backdrop-filter:blur(8px)}
-html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 90%,transparent)}
-.term-bar{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
-.term-bar i{width:12px;height:12px;border-radius:50%}
+.term{max-width:760px;margin:0 auto;border-radius:18px;border:1px solid rgba(255,255,255,.14);
+  background:color-mix(in srgb,#05080f 82%,transparent);position:relative;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 34px 80px -34px rgba(0,0,0,.8),0 0 60px -30px var(--glow);
+  overflow:hidden;backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3)}
+.term::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(115deg,rgba(255,255,255,.05) 0%,transparent 24%)}   /* glass reflection */
+html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 92%,transparent);border-color:rgba(15,23,42,.35)}
+.term-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.015));
+  border-bottom:1px solid rgba(255,255,255,.08)}
+.term-bar i{width:12px;height:12px;border-radius:50%;
+  box-shadow:inset 0 -2px 3px rgba(0,0,0,.3),inset 0 1px 1px rgba(255,255,255,.4)}
 .term-bar i:nth-child(1){background:#ff5f57}.term-bar i:nth-child(2){background:#febc2e}.term-bar i:nth-child(3){background:#28c840}
-.term-bar span{margin-left:10px;font-family:var(--mono);font-size:.78rem;color:#7c8aa3}
+.term-bar span{margin-left:10px;font-family:var(--mono);font-size:.78rem;color:#7c8aa3;
+  flex:1;text-align:center;margin-right:70px}   /* centered title, offset for the lights */
 .term pre{font-family:var(--mono);font-size:.9rem;line-height:1.9;color:#cdd7ea;padding:22px 22px 26px;overflow-x:auto;margin:0}
 .term .p{color:#22d3ee}.term .c{color:#818cf8}.term .a{color:#9fb0c9}.term .o{color:#5d6c84}.term .ok{color:#28c840}
 
@@ -280,8 +277,8 @@ html[data-theme="light"]{
 
 /* 1 · auras (z-index:-1 sits behind content, above the page bg) */
 html,body{overflow-x:clip}   /* clip (not hidden): off-edge auras must not widen the document */
-.cost,#how,#kitchen,#menu,#privacy,#why,#start,#download{position:relative}
-.cost::before,#kitchen::before,#menu::before,#privacy::before,#why::before,#start::before{
+.cost,#how,#kitchen,#menu,#privacy,#why,#download{position:relative}
+.cost::before,#kitchen::before,#menu::before,#privacy::before,#why::before{
   content:"";position:absolute;z-index:-1;width:620px;height:620px;border-radius:50%;
   pointer-events:none;opacity:.75}
 .cost::before{top:-4%;right:-7%;background:radial-gradient(circle,var(--glow2) 0%,transparent 62%)}
@@ -289,20 +286,19 @@ html,body{overflow-x:clip}   /* clip (not hidden): off-edge auras must not widen
 #menu::before{top:6%;left:-9%;background:radial-gradient(circle,var(--glow) 0%,transparent 62%)}
 #privacy::before{top:-8%;right:-6%;background:radial-gradient(circle,var(--glow) 0%,transparent 62%)}
 #why::before{top:4%;left:-8%;background:radial-gradient(circle,var(--glow2) 0%,transparent 62%)}
-#start::before{top:12%;right:-8%;background:radial-gradient(circle,var(--glow) 0%,transparent 62%)}
 
 /* 2 · the glass material (one recipe, everywhere) */
-.card,.step,.get-card,.ledger,.menu,.cost .cost-fig,.howx .howx-step{
+.card,.get-card,.ledger,.menu,.cost .cost-fig,.howx .howx-step{
   background:var(--glass);
   border:1px solid var(--glass-border);
   backdrop-filter:blur(18px) saturate(1.45);-webkit-backdrop-filter:blur(18px) saturate(1.45);
   box-shadow:inset 0 1px 0 var(--glass-hi),0 22px 50px -30px rgba(0,0,0,.55)}
-html[data-theme="light"] .card,html[data-theme="light"] .step,html[data-theme="light"] .get-card,
+html[data-theme="light"] .card,html[data-theme="light"] .get-card,
 html[data-theme="light"] .ledger,html[data-theme="light"] .menu,
 html[data-theme="light"] .cost .cost-fig,html[data-theme="light"] .howx .howx-step{
   box-shadow:inset 0 1px 0 var(--glass-hi),0 22px 45px -32px rgba(30,50,90,.38)}
-.step,.get-card,.howx .howx-step{transition:transform .25s,border-color .25s}
-.step:hover,.get-card:hover,.howx .howx-step:hover{transform:translateY(-2px);border-color:var(--border-strong)}
+.get-card,.howx .howx-step{transition:transform .25s,border-color .25s}
+.get-card:hover,.howx .howx-step:hover{transform:translateY(-2px);border-color:var(--border-strong)}
 nav{backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5)}
 .download{background:radial-gradient(700px 300px at 50% 0%,var(--glow),transparent 70%),var(--glass)}
 
@@ -322,6 +318,22 @@ section+section::after{content:"";position:absolute;top:0;left:50%;transform:tra
   width:min(1120px,88%);height:1px;background:linear-gradient(90deg,transparent,var(--border-strong),transparent)}
 section+section{position:relative}
 a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:6px}
+
+/* mobile-width polish */
+@media(max-width:640px){
+  section{padding:46px 0}
+  .cost::before,#kitchen::before,#menu::before,#privacy::before,#why::before{width:380px;height:380px;opacity:.5}
+  .term{border-radius:14px}
+  .term pre{font-size:.76rem;line-height:1.8;padding:16px 14px 20px}
+  .term-bar span{font-size:.68rem;margin-right:56px}
+  .dish-top{flex-wrap:wrap;row-gap:2px}
+  .download{padding:44px 18px;border-radius:22px}
+  .cost .cost-fig{padding:14px 10px 8px}
+  .cmd code{font-size:.76rem}
+  .hero-logo{width:58px;height:58px}
+  .cta .btn{padding:13px 22px;font-size:.95rem}
+  .why .num{min-width:56px;font-size:1.6rem}
+}
 </style>
 </head>
 <body>
@@ -331,10 +343,10 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
   <div class="nav-in">
     <a href="#" class="brand" aria-label="Loop Browser (beta)"><img src="loop-icon.svg" alt="" />Loop <b>Browser</b><span class="beta">beta</span></a>
     <div class="nav-links">
+      <a href="#how" class="lnk hide">How it works</a>
       <a href="#kitchen" class="lnk hide">Story</a>
       <a href="#menu" class="lnk hide">Menu</a>
       <a href="#privacy" class="lnk hide">Privacy</a>
-      <a href="#start" class="lnk hide">Get started</a>
       <a href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener" class="lnk hide">GitHub</a>
       <span class="nav-div hide"></span>
       <button class="icon-btn" id="theme" aria-label="Toggle theme">🌙</button>
@@ -468,6 +480,16 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     .howx-step code{font-family:var(--mono);font-size:.85em;color:var(--text);background:var(--panel-2);padding:1px 6px;border-radius:6px}
     .howx-arrow{display:flex;align-items:center;color:var(--faint);font-size:1.5rem}
     @media(max-width:760px){.howx-arrow{transform:rotate(90deg);justify-content:center}}
+    /* the start strip — onboarding folded into How-it-works (was its own near-duplicate section) */
+    .howx-start{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;max-width:960px;
+      margin:26px auto 0;padding:15px 26px;border-radius:999px;border:1px solid var(--glass-border);
+      background:var(--glass);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);
+      box-shadow:inset 0 1px 0 var(--glass-hi);font-size:.93rem;color:var(--muted)}
+    .howx-start b{font-family:var(--display);font-weight:800;color:var(--text);margin-right:7px}
+    .howx-start a{color:var(--cyan);text-decoration:none;font-weight:600}
+    .howx-start a:hover{text-decoration:underline}
+    .howx-start i{width:1px;height:18px;background:var(--border-strong)}
+    @media(max-width:760px){.howx-start{border-radius:18px;flex-direction:column;gap:10px;text-align:center}.howx-start i{display:none}}
   </style>
   <div class="wrap">
     <div class="head">
@@ -480,6 +502,11 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
       <div class="howx-step"><div class="k">02 · Replay</div><h3>Run it forever</h3><p><code>loop run</code> replays it deterministically. No LLM, ~$0 a run.</p></div>
       <div class="howx-arrow">&#8594;</div>
       <div class="howx-step"><div class="k">03 · Heal</div><h3>Fix on change</h3><p>If the page changes, the LLM re-teaches that one step — then it's free again.</p></div>
+    </div>
+    <div class="howx-start">
+      <span><b>1</b> Clone it — <a href="#download">get Loop from GitHub</a></span><i></i>
+      <span><b>2</b> Bring a brain — any LLM</span><i></i>
+      <span><b>3</b> Cook — <code>loop run</code>, watch every step</span>
     </div>
   </div>
 </section>
@@ -583,20 +610,6 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
       <div class="card"><div class="num">$0</div><div><h3>Deterministic replay</h3><p>No LLM in the loop. Known tasks cost nothing to repeat.</p></div></div>
       <div class="card"><div class="num">🛡️</div><div><h3>Injection-resistant</h3><p>Replay never feeds page text to an LLM — immune to prompt-injection.</p></div></div>
       <div class="card"><div class="num">🔑</div><div><h3>Works behind your login</h3><p>Runs on your real logged-in accounts, where cloud agents stall. Only you log in.</p></div></div>
-    </div>
-  </div>
-</section>
-
-<section id="start">
-  <div class="wrap center">
-    <div class="eyebrow">Get started</div>
-    <h2>Your first dish, in five steps.</h2>
-    <div class="steps">
-      <div class="step"><div class="n">1</div><h3>Get Loop</h3><p>The glass browser you'll command. <code>git clone</code> it and run the quick setup.</p><a href="#download">How to install →</a></div>
-      <div class="step"><div class="n">2</div><h3>Add a brain</h3><p>An <b>LLM</b> that writes &amp; heals your recipes. Bring your own.</p></div>
-      <div class="step"><div class="n">3</div><h3>The loop CLI</h3><p>Where you cook from — <code>loop run</code>, <code>loop author</code>. On your PATH after setup.</p></div>
-      <div class="step"><div class="n">4</div><h3>Connect</h3><p>Launch Loop — every <code>loop</code> command connects instantly. No config, no cloud.</p></div>
-      <div class="step"><div class="n">5</div><h3>Cook</h3><p>Run a dish — <code>loop run hn-top</code> — or write one with <code>loop author</code>. Watch every step.</p></div>
     </div>
   </div>
 </section>
