@@ -2,6 +2,7 @@
   "name": "demo-search",
   "title": "Wikipedia search (demo)",
   "description": "Search Wikipedia for a term — the hello-world recipe that proves a saved recipe replays with no LLM.",
+  "version": "1.0.0",
   "ingredients": { "term": "Playwright automation" },
   "steps": [
     { "do": "open",  "url": "https://en.wikipedia.org/wiki/Main_Page" },

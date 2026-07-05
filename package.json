@@ -74,6 +74,9 @@
       "bin/**/*",
       "recipes/**/*",
       "!recipes/local/**",
+      "skill/**/*",
+      "site-memories/*.md",
+      "!site-memories/local/**",
       "package.json",
       "!node_modules/playwright/**"
     ],

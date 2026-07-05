@@ -39,7 +39,7 @@ export function launchDetached() {
   try {
     electron = require("electron"); // the Electron binary path (post-rebrand path.txt)
   } catch {
-    throw new Error("Electron not found. Install with: npm i -g loop-browser");
+    throw new Error("Electron not found — run `npm install` inside the loop-browser repo (clone setup), then retry.");
   }
   const child = spawn(electron, [APP_ROOT], { detached: true, stdio: "ignore" });
   child.unref();
@@ -329,10 +329,13 @@ export async function findInput(page, label, { timeout = 25000 } = {}) {
     // rendered yet but any textbox existed (e.g. the WhatsApp COMPOSE box while a panel
     // loads; a following Enter would send to the chat). The label must stay binding
     // for the full wait; unnamed is a logged LAST RESORT below, never a race winner.
+    // EXACT label first, captured heal second: the capture exists because exact once
+    // FAILED — but if the site restores the exact label (and the captured name still
+    // matches something else), the capture must not beat the truth forever.
     const candidates = [
-      ...(capRe ? [page.getByLabel(capRe), page.getByPlaceholder(capRe), page.getByRole("textbox", { name: capRe })] : []),
       page.getByLabel(re),
       page.getByPlaceholder(re),
+      ...(capRe ? [page.getByLabel(capRe), page.getByPlaceholder(capRe), page.getByRole("textbox", { name: capRe })] : []),
       page.getByRole("searchbox", { name: re }),
       page.getByRole("textbox", { name: re }),
     ];
@@ -364,9 +367,9 @@ export async function findClickable(page, text, { timeout = 25000 } = {}) {
   const deadline = Date.now() + timeout;
   do {
     const candidates = [
-      ...(capRe ? [page.getByRole("button", { name: capRe }), page.getByRole("link", { name: capRe })] : []),
-      page.getByRole("button", { name: re }),
+      page.getByRole("button", { name: re }),                 // exact first, capture second (see findInput)
       page.getByRole("link", { name: re }),
+      ...(capRe ? [page.getByRole("button", { name: capRe }), page.getByRole("link", { name: capRe })] : []),
       page.getByText(re),
     ];
     const counts = await Promise.all(candidates.map((c) => c.first().count().catch(() => 0)));   // parallel probe (see findInput)
@@ -865,7 +868,7 @@ export async function captureFailure(page, label) {
 // SELF-HEAL Rung B: write a structured INCIDENT REPORT the Head Chef (the brain)
 // can heal from — the failing step, the (interpolated) target it sought, the live
 // page URL/title, the accessibility snapshot (the exact vocabulary recipes target
-// by), and the screenshot. `loop heal <recipe>` reads this; the brain picks the
+// by), and the screenshot. The brain (Claude Code) reads this file; it picks the
 // right element from the snapshot and patches the recipe step. No metered LLM in
 // the engine — the brain is Claude Code, invoked by the human.
 export async function captureIncident(page, { recipe, stepIndex, step, vars = {}, error, shot }) {

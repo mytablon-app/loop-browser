@@ -27,7 +27,7 @@ them current; there's no npm/download install). Tell them to clone and link it:
 ## The kitchen model (how to think about this)
 - **Recipe** = a saved recipe (`recipes/<name>.json`) — fixed steps targeting elements by role/label/text.
 - **Line Cook** = running a recipe (`loop run`). Deterministic, fast, **no LLM** — a recipe'd flow replays with zero AI in the loop; the goal is to get every task there.
-- **Head Chef** = the `loop` CLI (the chef who cooks). **YOU (Claude/the LLM) are its brain & wisdom** — you show up only to **author** a new recipe or **heal** a broken one.
+- **Head Chef / Brain** = **YOU (Claude/the LLM)** — you show up only to **author** a new recipe or **heal** a broken one; the `loop` CLI is the kitchen you command. Never in a running cook.
 - **Guardian** = on a break the run stops, screenshots, and writes an incident report. Never guesses.
 - **The Owner** = the human. Only they log in (the "key"). You cook *inside* their session but never
   handle credentials, and never do destructive/irreversible actions without asking.
@@ -43,7 +43,13 @@ them current; there's no npm/download install). Tell them to clone and link it:
 - `loop shot [name]` — screenshot to `runs/<name>.png` (coords are CSS px). Vision fallback for elements
   NOT in the accessibility tree (canvas, image-only buttons): look at the PNG, read coords, then…
 - `loop click-xy <x> <y>` — click at coordinates (the vision fallback action).
-- `loop recipes` — list saved recipes.
+- `loop frames` — like snapshot but for iframe content (modals/editors often render inside an iframe the top-frame snapshot misses).
+- `loop shot-os [name]` — **OS-level** screenshot: native dialogs (file pickers, OS confirms) are INVISIBLE to snapshot/shot — this is how you SEE them. Close one with `loop os-dismiss [n]`.
+- `loop mop` — tidy the station: close leftover web panels/modals + wipe `runs/scratch/`. Run after a cook.
+- `loop strays [kill]` — find (or kill) leftover unregistered Loop Browser windows.
+- `loop recipes` — list saved recipes (with runs/heals + graduation progress).
+- `loop status [recipe]` — the graduation ledger: runs, heals, clean streak; a recipe GRADUATES after N clean runs (then breaks are regressions, not heal invitations). `loop reopen <recipe>` sends it back to probation.
+- `loop serve <recipe> [pantry=<dir>] [force=1]` — cook the next un-served ticket from a pantry folder (dedups via the Service Log; force=1 to re-cook).
 - `loop privacy` — show what Loop stores locally (login profile, dishes, runs, private recipes) + the no-upload guarantee. Use when the user asks "what data do you keep?" / "is my data safe?".
 - `loop run <recipe> key=value …` — run a saved recipe with ingredients. Deterministic, no LLM.
 - `loop author <name> "<goal>"` — capture an authoring brief (`runs/<name>-authoring.json`: the page's
@@ -70,7 +76,7 @@ them current; there's no npm/download install). Tell them to clone and link it:
      ]
    }
    ```
-   Step verbs: `open · fill · click · press · wait · assert · read · snapshot · extract · click-xy · scrape-members`.
+   Step verbs: `open · fill · click · press · wait · assert · read · snapshot · extract · click-xy · scrape-members · open-chat`.
    Target by **role/label/text**, never pixel coordinates (use `click-xy` only as a vision fallback).
    Use `{placeholders}` for ingredients; pass them at run time as `key=value`.
 4. Test with `loop run <name> …` and iterate until it's clean.

@@ -27,26 +27,26 @@ const LOCAL_DIR = new URL("./recipes/local/", import.meta.url);
 const [cmd, ...rest] = process.argv.slice(2);
 
 const VERSION = JSON.parse(readFileSync(new URL("./package.json", import.meta.url))).version;
-const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
-  for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
-// Once-a-day, TTY-only nudge so `loop`/npm users know a newer version exists. Cache-backed
-// (instant on cache hit), 1.5s network budget when stale, stderr only — never pollutes recipe stdout.
+// Once-a-day, TTY-only nudge when the REPO is behind origin — clone is the only
+// distribution channel (the repo is the living method library; the frozen npm package
+// misses it, and `npm i -g` would break an `npm link` setup, so we never suggest it).
+// Cache-backed (instant on cache hit), 1.5s network budget when stale, stderr only.
 async function maybeNudge() {
   if (!process.stderr.isTTY) return;
   try {
+    const root = path.dirname(fileURLToPath(import.meta.url));
     const cacheFile = path.join((await import("os")).homedir(), ".loop-update.json");
     let cache = {}; try { cache = JSON.parse(readFileSync(cacheFile, "utf8")); } catch {}
     if (!cache.ts || Date.now() - cache.ts > 864e5) {
       try {
-        const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 1500);
-        const r = await fetch("https://registry.npmjs.org/loop-browser/latest", { signal: ctl.signal });
-        clearTimeout(t);
-        cache = { ts: Date.now(), latest: (await r.json()).version };
+        const local = execSync("git rev-parse HEAD", { cwd: root, encoding: "utf8", timeout: 1000, stdio: ["ignore", "pipe", "ignore"] }).trim();
+        const remote = (execSync("git ls-remote origin HEAD", { cwd: root, encoding: "utf8", timeout: 1500, stdio: ["ignore", "pipe", "ignore"] }).split(/\s+/)[0] || "").trim();
+        cache = { ts: Date.now(), behind: !!(local && remote && local !== remote) };
         writeFileSync(cacheFile, JSON.stringify(cache));
-      } catch {}
+      } catch { cache = { ts: Date.now(), behind: false }; try { writeFileSync(cacheFile, JSON.stringify(cache)); } catch {} }
     }
-    if (cache.latest && cmpVer(cache.latest, VERSION) > 0)
-      process.stderr.write(`\n  ⟳ loop-browser ${cache.latest} available — update: npm i -g loop-browser@latest\n\n`);
+    if (cache.behind)
+      process.stderr.write(`\n  ⟳ the Loop repo has new recipes/fixes — update: git pull && npm install\n\n`);
   } catch {}
 }
 await maybeNudge();
@@ -552,10 +552,11 @@ try {
 
     default:
       console.log(
-        "commands: open <url> | fill <label> <text> | click <text> | press <key> | read | snapshot\n" +
-          "          shot [name] | click-xy <x> <y> | shot-os [name] | os-dismiss [n] | mop\n" +
+        "commands: open <url> | fill <label> <text> | click <text> | press <key> | read | snapshot | frames\n" +
+          "          shot [name] | click-xy <x> <y> | shot-os [name] | os-dismiss [n] | mop | strays [kill]\n" +
           "          scrape-members <group> | run <recipe> key=value ... | serve <recipe> [pantry=<dir>] [force=1]\n" +
-          "          recipes | author <name> \"<goal>\" | setup | start | privacy"
+          "          recipes | status [recipe] | reopen <recipe> | author <name> \"<goal>\" | setup | start | privacy\n" +
+          "          wa-open <title> | wa-send <title> <text> | read-chat <title> [n] | wa-chats | wa-unread"
       );
   }
   if (!process.exitCode) console.log("✓ done — look at the window.");

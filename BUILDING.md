@@ -1,8 +1,9 @@
 # Building & shipping the installers
 
-Loop Browser ships as a desktop app per OS, hosted on **GitHub Releases**. The website
-(`site/index.html`) points its download buttons at the *latest* release's assets, using
-**fixed asset names** so the site never needs editing per release:
+> **Distribution is CLONE-ONLY** — the website no longer offers downloads (the repo is the
+> living method library; a frozen installer misses it). Installers are an OPTIONAL,
+> build-it-yourself channel (e.g. handing a teammate a DMG), hosted on **GitHub Releases**
+> with **fixed asset names** (`…/releases/latest/download/<asset>`):
 
 | OS      | Build host        | Command            | Output (`build/dist/`)     | Release asset name        |
 | ------- | ----------------- | ------------------ | -------------------------- | ------------------------- |

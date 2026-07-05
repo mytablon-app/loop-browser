@@ -6,9 +6,12 @@
 // Safety: weekly-limit hard-stop, human pacing, consec-fail breaker, Service-Log
 // dedup, account-is-priority guard. Usage: node cook-connect.mjs [maxSends]
 import { connect, activePage, runStep } from "./lib.mjs";
-import { servedSet, recordDish, logPath } from "./servicelog.mjs";
+import { servedSet, recordDish, readLog, logPath } from "./servicelog.mjs";
+import { recordRun } from "./stats.mjs";
+import { readFileSync } from "fs";
 
 const DISH = "linkedin-connect";
+const DRIVER_VERSION = "1.0.0";   // bump when the method changes (resets graduation probation)
 // Run params overridable by env so the committed driver stays generic (no personal
 // specifics): CONNECT_KEYWORDS=founder, CONNECT_NOTELESS=1 (skip the note → faster),
 // CONNECT_NOTE="your own invite text" (REQUIRED for noted invites — no shipped default;
@@ -22,7 +25,36 @@ if (!NOTELESS && !NOTE) {
   console.error("✗ set CONNECT_NOTE=\"your invite text\" (or CONNECT_NOTELESS=1 to send without a note) — the driver ships no default outreach copy.");
   process.exit(1);
 }
-const MAX = parseInt(process.argv[2] || "100", 10);
+
+// ── THE HUMAN PICKS THE TARGETS (hard rule, enforced in code — invites are scarce). ──
+// Either hand the driver an owner-picked list (CONNECT_LIST=<file>, one profile URL or
+// slug per line — only those get invited), or explicitly acknowledge auto-harvest with
+// CONNECT_AUTO=1. No silent default: "send invites" is not license to choose WHO.
+const LIST_FILE = process.env.CONNECT_LIST || "";
+const AUTO_OK = process.env.CONNECT_AUTO === "1";
+let LIST = null;
+if (LIST_FILE) {
+  LIST = new Set(readFileSync(LIST_FILE, "utf8").split("\n")
+    .map((l) => ((l.match(/\/in\/([^/?#\s]+)/i) || [])[1] || l.trim()).toLowerCase())
+    .filter(Boolean));
+  console.log(`[connect] owner list: ${LIST.size} target(s) from ${LIST_FILE}`);
+} else if (!AUTO_OK) {
+  console.error("✗ pick the targets: CONNECT_LIST=<file of profile URLs/slugs> (owner-picked), or CONNECT_AUTO=1 to explicitly allow harvesting whoever search returns.");
+  process.exit(1);
+}
+
+const MAX = parseInt(process.argv[2] || "25", 10);          // per-run cap (was 100 — invites are scarce)
+// Daily ledger cap: count today's sends in the Service Log so several runs in one
+// day can't stack past the owner's ~25/day account-health budget.
+const DAILY_CAP = parseInt(process.env.CONNECT_DAILY_CAP || "25", 10);
+const today = new Date().toISOString().slice(0, 10);
+const sentToday = (readLog()[DISH] || []).filter((e) => e.status === "served" && String(e.at || "").startsWith(today)).length;
+if (sentToday >= DAILY_CAP) {
+  console.error(`■ DAILY CAP: ${sentToday}/${DAILY_CAP} invites already sent today (service log) — not sending more. Override: CONNECT_DAILY_CAP.`);
+  process.exit(0);
+}
+const BUDGET = Math.min(MAX, DAILY_CAP - sentToday);   // this run's true send budget
+if (sentToday) console.log(`[connect] ${sentToday} already sent today → budget ${BUDGET} (daily cap ${DAILY_CAP})`);
 const MAX_PAGES = 12;
 const MAX_CONSEC_FAILS = 3;
 const LONG_BREAK_EVERY = 5;
@@ -143,16 +175,18 @@ console.log(`[connect] target ${MAX} · ${KEYWORDS} · UAE · 2nd-degree · ${NO
 outer: for (let pg = 1; pg <= MAX_PAGES && sent < MAX; pg++) {
   let page;
   try { ({ page } = await activePage(b)); await runStep(page, { do: "open", url: searchUrl(pg) }); await sleep(rnd(4000, 6000)); } catch (e) { console.error("search nav failed:", e.message.slice(0, 80)); break; }
-  if (await pageHitLimit(page)) { console.error("\n■ WEEKLY LIMIT at search — stopping"); recordDish(DISH, { target: null, status: "limit-hit", at: undefined }); break; }
+  if (await pageHitLimit(page)) { console.error("\n■ WEEKLY LIMIT at search — stopping"); recordDish(DISH, { target: null, status: "limit-hit" }); break; }   // (an explicit at:undefined used to CLOBBER the timestamp recordDish stamps)
   const cands = (await harvest(page)).filter((c) => { const s = slugOf(c.url); return s && !seen.has(s); });
   console.log(`[connect] page ${pg}: ${cands.length} fresh connectable rows`);
   const done = servedSet(DISH, "slug");
 
   for (const c of cands) {
-    if (sent >= MAX) break outer;
+    if (sent >= BUDGET) break outer;
     const slug = slugOf(c.url); seen.add(slug);
     if (done.has(slug)) continue; // already invited (our log)
+    if (LIST && !LIST.has(slug)) continue; // owner-picked list mode: only invite who the human chose
     attempts++;
+    page.__loopHealed = false;             // graduation signal, reset per invite
     let state;
     try { state = await connectWithNote(page, c.url, c.name); }
     catch (e) {
@@ -163,7 +197,7 @@ outer: for (let pg = 1; pg <= MAX_PAGES && sent < MAX; pg++) {
       await sleep(rnd(8000, 12000)); continue;
     }
     if (state === "weekly-limit") { console.error(`\n■ WEEKLY LIMIT (at ${c.name}) — stopping, account is priority`); recordDish(DISH, { target: c.name, slug, status: "limit-hit" }); break outer; }
-    if (state === "sent") { sent++; consec = 0; dry = 0; recordDish(DISH, { target: c.name, slug, url: c.url, status: "served", note: "connect+note" }); console.log(`✓ SENT [${sent}/${MAX}]: ${c.name}`); }
+    if (state === "sent") { sent++; consec = 0; dry = 0; recordDish(DISH, { target: c.name, slug, url: c.url, status: "served", note: "connect+note" }); recordRun(DISH, DRIVER_VERSION, { clean: !page.__loopHealed }); console.log(`✓ SENT [${sent}/${BUDGET}]: ${c.name}`); }
     else { recordDish(DISH, { target: c.name, slug, url: c.url, status: "skipped", state }); dry++; if (state === "needs-email") emailGates++; console.log(`↷ skip (${state}): ${c.name}`); }
     // Low-yield / throttle backoff: too many email-gates or a long dry streak means
     // the connectable pool is saturated / the account is throttled → STOP and WAIT.

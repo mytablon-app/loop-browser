@@ -1,15 +1,16 @@
 #!/usr/bin/env node
-// `loop-browser` / `npx loop-browser` — start the Loop Browser desktop app.
+// `loop-browser` — start the Loop Browser desktop app. On your PATH after the
+// clone setup (git clone → npm install → npm link).
 //
 // Starts it in the BACKGROUND and returns right away, so your terminal (or your
 // Claude Code session) stays free to keep working. The app keeps running until
 // you close its window — no Ctrl+C, nothing to get stuck attached to.
 //
-//   npx loop-browser          start the app (background)
-//   npx loop-browser setup    install the Claude Code skill, then start
+//   loop-browser          start the app (background)
+//   loop-browser setup    install the Claude Code skill, then start
 //
 // (The packaged-app shims bin/loop + bin/loop.cmd are a different thing — they run
-//  the CLI inside an INSTALLED build. This launcher starts the app from npm.)
+//  the CLI inside an INSTALLED build. This launcher starts the app from the repo.)
 import { ensureBrowser, isBrowserUp, installSkill } from "../lib.mjs";
 
 const arg = (process.argv[2] || "").toLowerCase();

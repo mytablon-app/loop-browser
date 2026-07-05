@@ -5,6 +5,12 @@
 import { connect, activePage, runStep } from "./lib.mjs";
 import { pickNextTicket, fetchProfile, slugOf } from "./porter.mjs";
 import { servedSet, recordDish } from "./servicelog.mjs";
+import { recordRun } from "./stats.mjs";
+
+// Graduation ledger version for this DRIVER (recipes carry their own `version`;
+// a bespoke driver is its own method). Bump when the METHOD changes — that resets
+// the clean-run probation, exactly like editing a recipe.
+const DRIVER_VERSION = "1.0.0";
 import { execSync } from "child_process";
 import { writeFileSync } from "fs";
 
@@ -300,9 +306,11 @@ while (posted < MAX) {
   let page;
   try {
     ({ page } = await activePage(b));
+    page.__loopHealed = false;                       // graduation signal, reset per cook
     const { ok, tagged } = await cookOne(page, t);
     if (ok) {
       recordDish(DISH, { target: t.name, slug: t.slug, file: t.file, status: "served", tagged, note: "cooked by line-cook driver" });
+      recordRun(DISH, DRIVER_VERSION, { clean: !page.__loopHealed });   // drivers graduate too
       posted++; consec = 0;
       console.log(`✓ PUBLISHED: ${t.name}${tagged ? " (tagged)" : " (photo-only)"}  [${posted}]`);
       await sleep(25000 + Math.random() * 20000); // human pace between posts
