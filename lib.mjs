@@ -236,6 +236,13 @@ const _capCache = new Map();
 const _capDir = new URL("./site-memories/local/captured/", import.meta.url);
 const _capPath = (domain) => new URL(`${encodeURIComponent(domain)}.json`, _capDir);
 const _domainOf = (page) => { try { return new URL(page.url()).hostname.replace(/^www\./, ""); } catch { return "unknown"; } };
+// A DYNAMIC target (interpolated from ingredients, e.g. a contact {name}) is per-cook:
+// its resolved value differs every run, so a capture would only bloat the file and could
+// mis-hit next run (the stale cached name is tried first). runStep flips this per step so
+// only STABLE literal targets ("Connect", "Search") are ever cached.
+let _skipCapture = false;
+export function setCaptureSkip(v) { _skipCapture = !!v; }
+const CAP_MAX = 300; // keep the per-domain capture file bounded (LRU by timestamp)
 function loadCaptures(domain) {
   if (_capCache.has(domain)) return _capCache.get(domain);
   let data = {};
@@ -244,14 +251,18 @@ function loadCaptures(domain) {
   return data;
 }
 function capturedName(page, target) {
+  if (_skipCapture) return null;                               // dynamic target → don't consult the cache
   return loadCaptures(_domainOf(page))[target]?.resolved || null;
 }
 function saveCapture(page, kind, target, resolved, score) {
-  if (!resolved || resolved === target) return;
+  if (_skipCapture || !resolved || resolved === target) return false;
   const domain = _domainOf(page);
   const data = loadCaptures(domain);
   data[target] = { kind, resolved, score: Math.round(score * 100) / 100, hits: (data[target]?.hits || 0) + 1, ts: new Date().toISOString() };
-  try { mkdirSync(_capDir, { recursive: true }); writeFileSync(_capPath(domain), JSON.stringify(data, null, 2) + "\n"); } catch {}
+  const keys = Object.keys(data);
+  if (keys.length > CAP_MAX)                                   // evict oldest so the file can't grow without bound
+    keys.sort((a, b) => String(data[a].ts).localeCompare(String(data[b].ts))).slice(0, keys.length - CAP_MAX).forEach((k) => delete data[k]);
+  try { mkdirSync(_capDir, { recursive: true }); writeFileSync(_capPath(domain), JSON.stringify(data, null, 2) + "\n"); return true; } catch { return false; }
 }
 
 async function healFind(page, target, sel, kind = "el") {
@@ -271,14 +282,30 @@ async function healFind(page, target, sel, kind = "el") {
         if (score > bestScore) { bestScore = score; best = el; bestText = name.trim().slice(0, 80); }
       }
       if (best && bestScore >= 0.6) { best.setAttribute("data-loop-heal", "1"); return { score: bestScore, text: bestText }; }
+      // High-precision fallback (only after word-overlap fails): exactly ONE candidate
+      // whose accessible name contains the full target phrase — or is a short label
+      // contained by it — i.e. an unambiguous rename like "Send message" → "Send".
+      // Length-bounded so a big container whose text merely includes the phrase can't win;
+      // require a single distinct name so ambiguity → give up (safe on destructive flows).
+      const tPhrase = tWords.join(" ");
+      const subs = [];
+      for (const el of document.querySelectorAll(sel)) {
+        const nm = norm(el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.textContent || "");
+        if (nm.length < 2 || nm.length > tPhrase.length * 2.2 + 12) continue;
+        if (nm.includes(tPhrase) || tPhrase.includes(nm)) subs.push({ el, nm });
+      }
+      const uniq = [...new Set(subs.map((s) => s.nm))];
+      if (uniq.length === 1) { subs[0].el.setAttribute("data-loop-heal", "1"); return { score: 0.6, text: subs[0].nm.slice(0, 80), via: "substring" }; }
       return null;
     },
     { target, sel }
   );
   if (!match) return null;
-  console.log(`  ↻ self-healed: "${target}" → "${match.text}" (${Math.round(match.score * 100)}% word match)`);
-  saveCapture(page, kind, target, match.text, match.score);
-  console.log(`  ⓘ captured: next run tries "${match.text}" first for "${target}"`);
+  const how = match.via === "substring" ? "substring match" : `${Math.round(match.score * 100)}% word match`;
+  console.log(`  ↻ self-healed: "${target}" → "${match.text}" (${how})`);
+  if (saveCapture(page, kind, target, match.text, match.score))
+    console.log(`  ⓘ captured: next run tries "${match.text}" first for "${target}"`);
+  try { page.__loopHealed = true; } catch {}   // graduation signal: this run needed a heal
   return page.locator('[data-loop-heal="1"]').first();
 }
 
@@ -472,6 +499,10 @@ export function interpolate(str, vars) {
 // no LLM involved. Same function powers single CLI commands and saved recipes.
 export async function runStep(page, step, vars = {}) {
   const v = (s) => interpolate(s, vars);
+  // Cache only stable literal targets: if this step's target came from a {placeholder},
+  // it's dynamic (per-cook) → don't capture or consult the selector cache for it.
+  const _tgt = step.target ?? step.name;
+  setCaptureSkip(typeof _tgt === "string" && /\{\w+\}/.test(_tgt));
   switch (step.do) {
     case "open": {
       let url = v(step.url);

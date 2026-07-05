@@ -128,6 +128,25 @@ async function exitTagPanel(page) {
   }
 }
 
+// HEAL (3-straggler hang): on ambiguous names the tag sub-panel lingers after a
+// no-confident-match bail — an open candidate dropdown or an empty placed pin that
+// overlaps "Next", so the editor never advances to the composer (text editor never
+// appears → fill times out ~49s). Clear it WITHOUT Escape (Escape can discard the
+// whole post): empty the search input (collapses the dropdown / empty pin), then
+// click the tag sub-panel's Back arrow until the search box is gone.
+async function clearTagRemnants(page) {
+  for (let i = 0; i < 3; i++) {
+    const search = page.locator('input[placeholder*="name" i], input[placeholder*="Type" i]').first();
+    if (!await search.isVisible({ timeout: 800 }).catch(() => false)) return;
+    await search.fill("").catch(() => {});
+    await sleep(400);
+    const back = page.locator('button[aria-label="Back"], button[aria-label="Go back"]').first();
+    if (!await back.isVisible({ timeout: 800 }).catch(() => false)) return;
+    await back.click().catch(() => {});
+    await sleep(900);
+  }
+}
+
 async function tagPerson(page, realName, headline, slug) {
   const tag = page.getByRole("button", { name: "Tag", exact: true }).first();
   if (!await tag.isVisible({ timeout: 12000 }).catch(() => false)) throw new Error("Tag button missing");
@@ -154,15 +173,23 @@ async function tagPerson(page, realName, headline, slug) {
   const cs = (htmls[idx].match(/\/in\/([a-z0-9\-]+)/i) || [])[1] || null;
   if (cs && slug && cs.toLowerCase() !== slug.toLowerCase()) { console.log("  [tag] slug mismatch — NOT tagging"); await exitTagPanel(page); return false; }
   await page.locator(sel).nth(idx).click(); await sleep(1200);
-  const add = page.getByRole("button", { name: "Add" });
-  if (await add.isEnabled({ timeout: 8000 }).catch(() => false)) { await add.click(); await sleep(1200); return true; }
+  // Commit the tag. LinkedIn rolled the confirm-button label "Add" → "Save" (also seen
+  // as "Done") mid-2026 — accept whichever is present and click it the moment it's
+  // enabled. Without committing, the person is selected (green chip) but the tag
+  // sub-panel stays open OVER "Next", so the editor never advances to the composer and
+  // the post times out (the ambiguous-name "straggler hang" — confirmed live).
+  const confirmBtn = page.getByRole("button", { name: /^(Save|Add|Done)$/ });
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const n = await confirmBtn.count().catch(() => 0);
+    for (let k = 0; k < n; k++) {
+      const b = confirmBtn.nth(k);
+      if (await b.isEnabled({ timeout: 500 }).catch(() => false) && await b.isVisible().catch(() => false)) {
+        await b.click().catch(() => {}); await sleep(1200); return true;
+      }
+    }
+    await sleep(500);
+  }
   await exitTagPanel(page); return false;
-}
-
-async function clickNextShadow(page) {
-  const c = await page.evaluate(() => { function f(root) { const b = [...root.querySelectorAll("button")].find(b => b.textContent.trim() === "Next" && b.offsetParent !== null); if (b) { const r = b.getBoundingClientRect(); return { cx: Math.round(r.left + r.width / 2), cy: Math.round(r.top + r.height / 2) }; } for (const el of root.querySelectorAll("*")) if (el.shadowRoot) { const x = f(el.shadowRoot); if (x) return x; } return null; } return f(document); }).catch(() => null);
-  if (c) { await page.mouse.click(c.cx, c.cy); await sleep(2500); return true; }
-  return false;
 }
 
 async function tidy(page) {
@@ -194,15 +221,37 @@ async function cookOne(page, t) {
   await runStep(page, { do: "click", target: "Start a post" });
   await sleep(3000);
   await uploadPhoto(page, t.image);
-  const tagged = await tagPerson(page, realName, headline, t.slug).catch((e) => { console.log("  [tag] err:", e.message.slice(0, 60)); return false; });
-  // advance media editor → caption stage: click Next until the Post button appears
-  // (one Next after tagging, sometimes two; tagged or not, we always need it).
-  const post = page.getByRole("button", { name: "Post", exact: true });
-  for (let i = 0; i < 3 && !(await post.isVisible({ timeout: 2000 }).catch(() => false)); i++) {
-    await clickNextShadow(page);
-    await sleep(1500);
+  // LOOP_LI_NOTAG=1 → skip photo-tagging entirely and post photo-only. Use it for
+  // ambiguous-name tickets (many identical-name LinkedIn profiles) where (a) we can't
+  // tag the right person safely anyway and (b) the tag flow leaves an incomplete pin
+  // that blocks the editor from advancing past "Next". This is the SAME proven path
+  // that succeeds for genuine no-match tickets — just chosen up front.
+  const NOTAG = process.env.LOOP_LI_NOTAG === "1";
+  let tagged = false;
+  if (NOTAG) { console.log("  [tag] LOOP_LI_NOTAG=1 — photo-only, no tag attempted"); }
+  else {
+    tagged = await tagPerson(page, realName, headline, t.slug).catch((e) => { console.log("  [tag] err:", e.message.slice(0, 60)); return false; });
+    await clearTagRemnants(page);  // drop any lingering tag dropdown/empty pin before advancing
   }
-  if (!await post.isVisible({ timeout: 4000 }).catch(() => false)) throw new Error("caption stage not reached");
+  // advance media editor → caption stage. CRITICAL: scope "Next" to the Editor MODAL.
+  // The admin page BEHIND the modal also carries "Next"-ish targets, and a page-wide
+  // match (or the old document-walking coordinate click) lands there — scrolling the
+  // background while the modal's real "Next" sits untouched, so the composer is never
+  // reached (observed live: "the page scrolls behind the modal and it goes dead").
+  // The TEXT EDITOR appearing is the only true success signal.
+  // Gate on the composer's "Post" button appearing — NOT on the text editor being
+  // "visible". A stale/hidden text-editor node from the media-editor stage reports
+  // visible and makes us skip "Next", then the fill clicks a dead element → 30s timeout
+  // (the real straggler hang). "Post" exists ONLY at the composer stage: the image
+  // editor has Next/Back, the tag sub-panel has Save. Click ONLY the modal's "Next".
+  const dlg = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "Editor", exact: true }) }).first();
+  const postBtn = page.getByRole("button", { name: "Post", exact: true }).first();
+  for (let i = 0; i < 6 && !(await postBtn.isVisible({ timeout: 1500 }).catch(() => false)); i++) {
+    const nextBtn = dlg.getByRole("button", { name: "Next", exact: true }).first();
+    if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) await nextBtn.click({ timeout: 5000 }).catch(() => {});
+    await sleep(1800);
+  }
+  if (!await postBtn.isVisible({ timeout: 3000 }).catch(() => false)) throw new Error("caption stage not reached");
   await runStep(page, { do: "fill", target: "Text editor for creating content", value: t.caption });
   await sleep(1500);
   // GUARD before the irreversible Post: make sure a human/auto-process hasn't taken
@@ -212,6 +261,7 @@ async function cookOne(page, t) {
   // "Post successful / Try Premium Page" upsell modal after every post). That modal is the reliable
   // success signal — and it MUST be dismissed ("No thanks"), or it stays up and blocks the next post
   // (this is what false-negatived verify and caused the cascade of failures).
+  const post = page.getByRole("button", { name: "Post", exact: true });
   await post.click();
   let ok = false;
   try {

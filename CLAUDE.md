@@ -41,6 +41,7 @@ Existing packs: `site-memories/linkedin.md`, `site-memories/whatsapp.md`. Bespok
 - `main.js` — Electron main: frameless glass window (macOS vibrancy / Windows acrylic), maximised, exposes **CDP on `localhost:9222`**.
 - `cli.mjs` — the `loop` CLI: connects over CDP, runs single commands + recipes (Guardian-wrapped).
 - `lib.mjs` — engine core: `connect`/`activePage`, `findInput`/`findClickable` (poll + deterministic self-heal), `runStep` primitives, `harvestMembers`, `captureIncident`/`captureAuthoringContext`.
+- `wa.mjs` — WhatsApp primitives + verbs (reusable WA logic, shipped). `cook-linkedin.mjs` / `cook-connect.mjs` — bespoke LinkedIn drivers (NOT shipped — repo-local).
 - `porter.mjs` (ingredient gathering) · `servicelog.mjs` (the Service Log).
 - `ui/` — `home.html`, `toolbar.html`, `preload.js` (the glass UI).
 - `recipes/` — saved recipes (`*.json`). `recipes/local/` = private (gitignored).
@@ -58,7 +59,7 @@ The CLI speaks **CDP** to `localhost:9222` via Playwright `connectOverCDP`. Non-
 - **No test suite.** Verify = run a recipe live and watch; `node cli.mjs <verb>` is the smoke test.
 
 ## CLI
-`open <url>` · `fill "<label>" "<text>"` · `click "<text>"` · `press <Key>` · `read` · `snapshot` (a11y tree = the brain's eyes) · `shot [name]` (web screenshot) · `click-xy <x> <y>` (vision fallback) · `shot-os [name]` (**OS** screenshot — native dialogs; alias `os-shot`) · `os-dismiss [n]` (close native modal; alias `os-escape`) · `mop` (Mopper: close web panels/modals + wipe `runs/scratch/` + health-check; scoped to `LOOP_CDP_PORT`) · `author <name> "<goal>"` · `scrape-members "<group>"` · `run <recipe> key=value …` · `serve <recipe> [pantry=<dir>] [force=1]` (Expediter: next ticket → dedup/ledger → cook) · `recipes` (alias `flows`) · `setup` · `start` · `privacy`.
+`open <url>` · `fill "<label>" "<text>"` · `click "<text>"` · `press <Key>` · `read` · `snapshot` (a11y tree = the brain's eyes) · `shot [name]` (web screenshot) · `click-xy <x> <y>` (vision fallback) · `shot-os [name]` (**OS** screenshot — native dialogs; alias `os-shot`) · `os-dismiss [n]` (close native modal; alias `os-escape`) · `mop` (Mopper: close web panels/modals + wipe `runs/scratch/` + health-check; scoped to `LOOP_CDP_PORT`) · `strays [kill]` (alias `kill-strays`: find/close leftover browsers on unregistered CDP ports — the phantom "3rd window"; kills Loop procs only, never a registered site or non-Loop process) · `author <name> "<goal>"` · `scrape-members "<group>"` · `run <recipe> key=value …` · `serve <recipe> [pantry=<dir>] [force=1]` (Expediter: next ticket → dedup/ledger → cook) · `recipes` (alias `flows`) · `setup` · `start` · `privacy`.
 **Auto-launch:** any `loop` command auto-starts Loop Browser in the background if down (`ensureBrowser()`); no `npm start` needed. `loop start` launches and returns.
 
 ## Recipe format
@@ -75,7 +76,7 @@ Step verbs: `open · fill · click · press · wait · assert · read · snapsho
 - **Heal:** on a break the Guardian writes `runs/<recipe>-incident.json` (failing step + live a11y snapshot). Find the element there, patch that step's `target`, bump `version`, re-run.
 
 ## The git boundary (CRITICAL)
-- **Ships:** engine (`main/cli/lib/ui` + `porter`/`servicelog`), `recipes/*.json` (method only), **`site-memories/*.md` (generic site MODELS — how a public site works; scrubbed of personal data)**, `skill/`, `site/`, docs.
+- **Ships:** engine (`main/cli/lib/ui` + `porter`/`servicelog`/`wa`), `recipes/*.json` (method only), **`site-memories/*.md` (generic site MODELS — how a public site works; scrubbed of personal data)**, `skill/`, `site/`, docs.
 - **Never ships (gitignored):** the login profile (OS app-data dir, or `~/.loop-profiles/<site>/` via `instance.sh`; legacy `.loop-profile/`) = the key, `dishes/` (incl. `service-log.json` — work record), `runs/`, `recipes/local/` + **`site-memories/local/`** (our specifics: companyId, paths, account state, real names), `.claude/`, DMG/EXE. *Recipe + site-model travel; meal, pantry, key, our specifics stay home.* `grep` for personal data before committing.
 - **HARD RULE — no secret/private data ever ships** (passwords, tokens, keys, sessions, private recipes). 4 layers, never weaken: `.gitignore` → npm `files` allowlist (`recipes/*.json`, NEVER `recipes/`) → `.npmignore` → publish guard `scripts/check-no-secrets.mjs` (`prepublishOnly`, gates manual + CI). A real leak was caught here once.
 - **Packaging-completeness guard** (separate gate): `scripts/check-bundled-imports.mjs` (`npm run check:bundle`) verifies every local `./` import reachable from the bundled entry points is shipped by BOTH npm `files` AND electron-builder `build.files` — else the packaged/published `loop` crashes `ERR_MODULE_NOT_FOUND`. Runs on `prepublishOnly` + every `dist`/`pack` build (a real gap shipped a broken CLI in 0.0.5).
@@ -93,7 +94,7 @@ Step verbs: `open · fill · click · press · wait · assert · read · snapsho
 
 ## Distribution (repo-first)
 - **Front door = `git clone` only:** `git clone … → npm install → npm link → loop setup`. README + website lead with clone; do NOT advertise `npx` / `npm i -g` / a download. The repo is canonical — the living method library (`git pull` for the latest; PR fixes back). 4 collaborators → 4× leak risk: **grep for personal data before every commit** (the git boundary above).
-- **npm package stays published but unadvertised** — silent fallback + still the dep source (`npm install` pulls deps). Re-publishing is OPTIONAL (repo is source of truth), so the CI/token pain is off the critical path.
+- **Clone is the ONLY install path (not npm)** — a published npm package is a *frozen snapshot* that can't `git pull` new recipes/cuisine packs or take heals back, so it **loses the living memory** (the whole value). Don't advertise or cut npm releases. Post-clone `npm install`/`npm link`/`npm run dist` are repo operations (deps/PATH/build), NOT npm-as-distribution — those stay.
 - **`electron` in `peerDependencies`** (electron-builder forbids it in `dependencies`); npm 7+ auto-installs. Don't move it.
 
 > Per-recipe + per-cuisine notes live in `recipes/` + `site-memories/` (this repo, shared by all contributors). Project history/strategy lives in each contributor's private `~/.claude` auto-memory — not required to operate Loop.

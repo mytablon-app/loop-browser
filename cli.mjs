@@ -19,6 +19,7 @@ import { fileURLToPath } from "url";
 import { connect, activePage, runStep, withRetry, captureFailure, captureIncident, captureAuthoringContext, harvestMembers, ensureBrowser, isBrowserUp, installSkill, profileDir, dirInfo, fmtBytes, sleep } from "./lib.mjs";
 import { pickNextTicket, slugOf } from "./porter.mjs";
 import { recordDish, servedSet, logPath as serviceLogPath } from "./servicelog.mjs";
+import { recordRun, isGraduated, reopenStats, readStats, GRADUATE_N } from "./stats.mjs";
 import { openChatExact, readRecent, sendMessage, listChats, unreadChats, withLock } from "./wa.mjs";
 
 const RECIPES_DIR = new URL("./recipes/", import.meta.url);
@@ -62,11 +63,27 @@ function resolveRecipe(name) {
 // `run` (one dish, ingredients on the CLI) and `serve` (ingredients from a ticket).
 async function runRecipe(page, recipe, vars, name) {
   console.log(`▶ running recipe "${recipe.name}" (${recipe.steps.length} steps, no LLM)`);
+  page.__loopHealed = false;                                              // graduation signal, reset per run
+  const N = Number(recipe.graduateAfter) > 0 ? Number(recipe.graduateAfter) : GRADUATE_N;
   for (const [i, step] of recipe.steps.entries()) {
     try {
       await withRetry(() => runStep(page, step, vars), { tries: step.tries ?? 3 });
     } catch (e) {
+      const wasGrad = isGraduated(name, recipe.version);
+      reopenStats(name);                                                  // any break → back to probation
       const shot = await captureFailure(page, `${name}-fail-step${i + 1}`);
+      if (wasGrad) {
+        // A graduated recipe breaking is a REGRESSION, not a routine heal — do NOT
+        // auto-write a brain brief; require a deliberate re-run to re-invite the Head Chef.
+        console.error(`\n✗ GRADUATED recipe "${recipe.name}" broke at step ${i + 1}/${recipe.steps.length} (${step.do}) — REGRESSION, not a routine heal`);
+        console.error(`  reason   : ${e.message}`);
+        console.error(`  url      : ${page.url()}`);
+        console.error(`  📸 shot  : ${shot}`);
+        console.error(`  reopened to probation · no incident written · nothing destructive attempted`);
+        console.error(`  → if the site genuinely changed, re-run to capture a heal report for the Head Chef`);
+        process.exitCode = 1;
+        return false;
+      }
       const incident = await captureIncident(page, { recipe: name, stepIndex: i, step, vars, error: e, shot });
       console.error(`\n✗ step ${i + 1}/${recipe.steps.length} (${step.do}) BROKE after retries`);
       console.error(`  reason   : ${e.message}`);
@@ -82,18 +99,76 @@ async function runRecipe(page, recipe, vars, name) {
     }
   }
   console.log(`✓ recipe "${recipe.name}" complete`);
+  // Graduation ledger: count this completed run; clean = no heal fired during it.
+  const g = recordRun(name, recipe.version, { clean: !page.__loopHealed, n: N });
+  if (g.justGraduated)
+    console.log(`🎓 "${recipe.name}" GRADUATED — ${g.cleanStreak} clean runs, no heals. The brain is now off this recipe; a break is a regression.`);
+  else if (g.graduated)
+    console.log(`   graduated ✓ · ${g.runs} runs`);
+  else
+    console.log(`   ${g.cleanStreak}/${N} clean runs to graduation${page.__loopHealed ? " · healed this run (streak reset)" : ""}`);
   return true;
 }
 
 // "loop recipes" doesn't need the browser (alias: "flows" for muscle memory)
 if (cmd === "recipes" || cmd === "flows") {
   const files = readdirSync(RECIPES_DIR).filter((f) => f.endsWith(".json"));
+  const stats = readStats();
   console.log("recipes:");
   for (const f of files) {
     const recipe = JSON.parse(readFileSync(new URL(f, RECIPES_DIR)));
-    console.log(`  • ${recipe.name.padEnd(24)} ${recipe.title || recipe.description || ""}`);
+    const e = stats[recipe.name];
+    const N = Number(recipe.graduateAfter) > 0 ? Number(recipe.graduateAfter) : GRADUATE_N;
+    let tag = "· never run";
+    if (e && e.version === (recipe.version || "0.0.0"))
+      tag = e.graduated
+        ? `· graduated ✓ (${e.runs} runs, ${e.heals} heals)`
+        : `· ${e.cleanStreak}/${N} to graduation (${e.runs} runs, ${e.heals} heals)`;
+    else if (e) tag = "· edited → re-probation";
+    const title = (recipe.title || recipe.description || "").slice(0, 34);
+    console.log(`  • ${recipe.name.padEnd(24)} ${title.padEnd(36)} ${tag}`);
   }
   process.exit(0);
+}
+
+// "loop status [recipe]" — graduation/health ledger (no browser needed).
+if (cmd === "status") {
+  const stats = readStats();
+  const names = rest[0] ? [rest[0]] : Object.keys(stats).sort();
+  if (!names.length) { console.log("no recipe stats yet — run a recipe first."); process.exit(0); }
+  console.log(`graduation status  (N=${GRADUATE_N}${process.env.LOOP_GRADUATE_N ? " via LOOP_GRADUATE_N" : ""}; a break or heal resets the streak)`);
+  for (const nm of names) {
+    const e = stats[nm];
+    if (!e) { console.log(`  • ${nm.padEnd(24)} never run`); continue; }
+    const state = e.graduated
+      ? `graduated ✓ since ${(e.graduatedAt || "").slice(0, 10)}`
+      : `probation · ${e.cleanStreak} clean in a row`;
+    console.log(`  • ${nm.padEnd(24)} v${e.version} · ${e.runs} runs · ${e.heals} heals · ${state}`);
+    if (e.lastHealAt) console.log(`      last heal: ${e.lastHealAt.slice(0, 19).replace("T", " ")}`);
+  }
+  process.exit(0);
+}
+
+// "loop reopen <recipe>" — deliberately send a graduated recipe back to probation
+// (re-enables brain heal reports on the next break, e.g. after the site changed).
+if (cmd === "reopen") {
+  const nm = rest[0];
+  if (!nm) { console.error("usage: loop reopen <recipe-name>"); process.exit(1); }
+  const ok = reopenStats(nm);
+  console.log(ok
+    ? `↺ "${nm}" reopened — back to probation; the next break will capture a heal report.`
+    : `no stats for "${nm}" yet (never run?)`);
+  process.exit(0);
+}
+
+// "loop strays [kill]" (alias "kill-strays") — find/close leftover unregistered browsers
+// (the phantom "3rd window": closing the window doesn't quit the app on macOS). No browser needed.
+if (cmd === "strays" || cmd === "kill-strays") {
+  const script = fileURLToPath(new URL("./scripts/instances.mjs", import.meta.url));
+  const kill = cmd === "kill-strays" || (rest[0] || "").toLowerCase() === "kill";
+  try { execSync(`node ${JSON.stringify(script)} strays${kill ? " kill" : ""}`, { stdio: "inherit" }); }
+  catch { process.exitCode = 1; }
+  process.exit(process.exitCode || 0);
 }
 
 // "loop privacy" — show exactly what Loop stores locally + the no-upload guarantee.

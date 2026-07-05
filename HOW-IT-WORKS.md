@@ -9,9 +9,10 @@ It reads the page's *accessibility tree* (the structured labels behind the pixel
 inputs, text), finds the right element by its role/label, and acts — while you watch it happen
 in a real window.
 
-The trick that makes it cheap, fast, and hard to copy: **the LLM is almost never running.**
-We think of the whole system as a **professional kitchen**, and that analogy isn't decoration —
-it maps one-to-one onto how the code is structured.
+The trick that makes it cheap, fast, and hard to copy: **once a task is written down as a recipe,
+replaying it runs no LLM at all.** The AI is there to *author* a recipe and to *heal* it when it
+breaks — not to drive it on every run. We think of the whole system as a **professional kitchen**,
+and that analogy isn't decoration — it maps one-to-one onto how the code is structured.
 
 ---
 
@@ -27,9 +28,16 @@ Loop works the same way:
 - The **Line Cook** replays that recipe deterministically. **No LLM. No tokens. No guessing.**
 - The **Head Chef (the LLM)** only shows up to *write* a new recipe or *heal* a broken one.
 
-So ~99% of the work runs with zero AI in the loop. The intelligence is **frozen into the recipe
-the first time** and reused forever. That's the moat: competitors re-ask an LLM to re-solve the
-same task on every single run; we solved it once and saved the answer.
+So a recipe'd task runs with **zero AI in the replay loop** — the intelligence is **frozen into the
+recipe the first time** and reused forever. That's the moat: competitors re-ask an LLM to re-solve
+the same task on every single run; we solve it once and save the answer.
+
+**Where Loop actually is today (honest version):** the deterministic path is real and built — a saved
+recipe replays with no LLM. But not every task is a recipe yet. Some of our headline flows (parts of
+the LinkedIn and WhatsApp work) still run through LLM-driven drivers or the authoring brain, because
+they haven't been frozen into a stable recipe. So the right claim isn't "the AI almost never runs" —
+it's: **the more a task settles into a recipe, the less the AI touches it, until replay is fully
+deterministic.** That's the direction, and the recipe'd flows are already there.
 
 ```
    Author once (Head Chef / LLM)  ──►  recipes/<name>.json  ──►  Run forever (Line Cook / no LLM)
@@ -58,7 +66,7 @@ A real kitchen has a *brigade de cuisine* — a chain of roles. Loop fills these
 |--------------|---------|-----|
 | 🔑 **Owner** | The human (you) | Holds the login, directs, approves, tastes. Doesn't cook. |
 | 👨‍🍳 **Head Chef / Brain** | The LLM | Designs a recipe **once**; heals it when it breaks. Off the hot path. |
-| 🍳 **Line Cook** | `loop run` | Replays a recipe step-by-step, deterministic, no LLM. ~99% of work. |
+| 🍳 **Line Cook** | `loop run` | Replays a recipe step-by-step, deterministic, no LLM. The goal state for every task. |
 | 📋 **Expediter** | `loop serve` | Picks the next ticket, dedupes, keeps the **Service Log**, verifies. |
 | 🧺 **Porter** | `porter.mjs` | Gathers ingredients off the hot path (files, profiles, messages). |
 | 🛟 **Sous Chef** | The Guardian | On a break: retry → self-heal → write an incident → stop. |
@@ -167,8 +175,9 @@ Here's what actually happens when Loop posts a daily welcome spotlight:
 4. **Sous Chef** (Guardian) watches; if a step breaks it retries, then self-heals, then stops.
 5. The result is recorded to the **Service Log**, and the **Mopper** tidies the station.
 
-No LLM ran in steps 1–5. The Head Chef only gets called if step 3's recipe needs *authoring* or
-*healing*. That's Loop.
+Once that flow is a stable recipe, no LLM runs in steps 1–5 — the Head Chef only gets called if
+step 3's recipe needs *authoring* or *healing*. (Until a flow is recipe'd, the brain is still in the
+loop for it — the work of Loop is turning each cook into that no-LLM replay.) That's Loop.
 
 ---
 

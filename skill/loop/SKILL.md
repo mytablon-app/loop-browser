@@ -18,13 +18,15 @@ Browser in the background if it isn't already running, then drives it; it stays 
 So just run the command you need (e.g. `loop open …`) and the window appears. To start it
 explicitly without acting, use `loop start` (background, returns immediately).
 
-If the `loop` command itself isn't found, the user hasn't installed it — tell them to run
-`npm i -g loop-browser` then `loop setup` (installs this skill + starts the browser). That's the
-whole setup; after it, they just talk to you.
+If the `loop` command itself isn't found, the user hasn't installed it. Loop runs **from the repo**
+(the repo is the living method library — recipes + cuisine packs grow there and `git pull` keeps
+them current; there's no npm/download install). Tell them to clone and link it:
+`git clone https://github.com/mytablon-app/loop-browser.git && cd loop-browser && npm install && npm link && loop setup`
+(installs this skill + starts the browser). That's the whole setup; after it, they just talk to you.
 
 ## The kitchen model (how to think about this)
 - **Recipe** = a saved recipe (`recipes/<name>.json`) — fixed steps targeting elements by role/label/text.
-- **Line Cook** = running a recipe (`loop run`). Deterministic, fast, **no LLM** — this is ~99% of work.
+- **Line Cook** = running a recipe (`loop run`). Deterministic, fast, **no LLM** — a recipe'd flow replays with zero AI in the loop; the goal is to get every task there.
 - **Head Chef** = the `loop` CLI (the chef who cooks). **YOU (Claude/the LLM) are its brain & wisdom** — you show up only to **author** a new recipe or **heal** a broken one.
 - **Guardian** = on a break the run stops, screenshots, and writes an incident report. Never guesses.
 - **The Owner** = the human. Only they log in (the "key"). You cook *inside* their session but never
