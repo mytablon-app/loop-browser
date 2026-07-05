@@ -320,6 +320,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     .cx-dot{fill:var(--ai);stroke:var(--panel-2);stroke-width:2}
     .cx-note{fill:var(--text);font-family:var(--body);font-size:13px;font-weight:700}
     .cx-note-sm{fill:var(--muted);font-family:var(--body);font-size:12px;font-weight:500}
+    .cx-pct{fill:var(--ai);font-family:var(--body);font-size:13px;font-weight:700}
     .cx-lead{stroke:var(--faint);stroke-width:1}
     .cx-free{fill:var(--cyan);opacity:.07}
   </style>
@@ -327,61 +328,54 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <div class="head">
       <div class="eyebrow">The economics</div>
       <h2>AI use falls to <span class="g">zero</span> as a task repeats.</h2>
-      <p class="sub">The first run pays for the intelligence — the LLM writes the recipe. Every run after replays it deterministically, for free. When a page changes, one heal re-teaches the step; auto-capture makes the next heal cheaper, and it settles back to zero.</p>
+      <p class="sub">The first run writes the recipe. Every replay after is free — and even the occasional heal needs less AI each time.</p>
     </div>
     <figure class="cost-fig">
       <svg viewBox="0 0 840 380" role="img" aria-labelledby="cxT cxD">
         <title id="cxT">AI in the loop versus number of times a task has run</title>
-        <desc id="cxD">Starts at 100% on the first run when the LLM authors the recipe, drops to near zero on deterministic replays, spikes when a UI change forces a heal, and settles back toward zero as each heal gets cheaper.</desc>
+        <desc id="cxD">100% on the first run when the LLM writes the recipe, near zero on deterministic replays, and brief heal humps that shrink over time — 50%, then 25%, then about 5%.</desc>
         <defs>
           <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="var(--ai)" stop-opacity=".34"/>
+            <stop offset="0" stop-color="var(--ai)" stop-opacity=".32"/>
             <stop offset="1" stop-color="var(--ai)" stop-opacity="0"/>
           </linearGradient>
         </defs>
 
-        <!-- free zone -->
-        <rect class="cx-free" x="58" y="315" width="756" height="15"/>
+        <rect class="cx-free" x="52" y="317" width="764" height="15"/>
 
-        <!-- y grid + ticks -->
-        <line class="cx-grid" x1="58" y1="34"  x2="814" y2="34"/>
-        <line class="cx-grid" x1="58" y1="108" x2="814" y2="108"/>
-        <line class="cx-grid" x1="58" y1="182" x2="814" y2="182"/>
-        <line class="cx-grid" x1="58" y1="256" x2="814" y2="256"/>
-        <text class="cx-tick" x="50" y="38"  text-anchor="end">100%</text>
-        <text class="cx-tick" x="50" y="112" text-anchor="end">75</text>
-        <text class="cx-tick" x="50" y="186" text-anchor="end">50</text>
-        <text class="cx-tick" x="50" y="260" text-anchor="end">25</text>
-        <text class="cx-tick" x="50" y="334" text-anchor="end">0</text>
-        <text class="cx-title" transform="translate(16,182) rotate(-90)" text-anchor="middle">AI in the loop</text>
+        <line class="cx-grid" x1="52" y1="36"  x2="816" y2="36"/>
+        <line class="cx-grid" x1="52" y1="110" x2="816" y2="110"/>
+        <line class="cx-grid" x1="52" y1="184" x2="816" y2="184"/>
+        <line class="cx-grid" x1="52" y1="258" x2="816" y2="258"/>
+        <text class="cx-tick" x="44" y="40"  text-anchor="end">100%</text>
+        <text class="cx-tick" x="44" y="114" text-anchor="end">75</text>
+        <text class="cx-tick" x="44" y="188" text-anchor="end">50</text>
+        <text class="cx-tick" x="44" y="262" text-anchor="end">25</text>
+        <text class="cx-tick" x="44" y="336" text-anchor="end">0</text>
+        <text class="cx-title" transform="translate(14,184) rotate(-90)" text-anchor="middle">AI %</text>
 
-        <!-- x axis + ticks -->
-        <line class="cx-axis" x1="58" y1="330" x2="814" y2="330"/>
-        <text class="cx-tick" x="58"  y="350" text-anchor="middle">1</text>
-        <text class="cx-tick" x="232" y="350" text-anchor="middle">10</text>
-        <text class="cx-tick" x="426" y="350" text-anchor="middle">20</text>
-        <text class="cx-tick" x="620" y="350" text-anchor="middle">30</text>
-        <text class="cx-tick" x="814" y="350" text-anchor="middle">40</text>
-        <text class="cx-title" x="436" y="373" text-anchor="middle">Times the task runs &#8594;</text>
+        <line class="cx-axis" x1="52" y1="332" x2="816" y2="332"/>
+        <text class="cx-tick" x="52"  y="352" text-anchor="middle">1</text>
+        <text class="cx-tick" x="228" y="352" text-anchor="middle">10</text>
+        <text class="cx-tick" x="424" y="352" text-anchor="middle">20</text>
+        <text class="cx-tick" x="620" y="352" text-anchor="middle">30</text>
+        <text class="cx-tick" x="816" y="352" text-anchor="middle">40</text>
+        <text class="cx-title" x="434" y="374" text-anchor="middle">times the task runs &#8594;</text>
 
-        <!-- area + line -->
-        <path fill="url(#costGrad)" d="M 58 330 L 58 34 L 77.4 303.4 L 96.8 321.1 L 116.2 325.9 L 154.9 326.7 L 193.7 325.3 L 232.5 327 L 271.2 326.2 L 290.6 34 L 310 312.2 L 329.4 323.5 L 348.8 326.4 L 387.5 327 L 445.7 325.9 L 503.8 327 L 562 326.4 L 581.4 176.1 L 600.8 318.2 L 620.2 325.3 L 658.9 327 L 717.1 327.3 L 775.2 326.7 L 814 327.9 L 814 330 Z"/>
-        <path class="cx-line" d="M58 34 L77.4 303.4 L96.8 321.1 L116.2 325.9 L154.9 326.7 L193.7 325.3 L232.5 327 L271.2 326.2 L290.6 34 L310 312.2 L329.4 323.5 L348.8 326.4 L387.5 327 L445.7 325.9 L503.8 327 L562 326.4 L581.4 176.1 L600.8 318.2 L620.2 325.3 L658.9 327 L717.1 327.3 L775.2 326.7 L814 327.9"/>
+        <path fill="url(#costGrad)" d="M52 332 L52 36 C58.53 127.76 65.06 297.98 71.59 311.28 C78.12 324.58 84.65 323.90 91.18 324.6 C104.24 326.01 117.30 328.45 130.36 328.45 C149.95 328.45 169.54 328.45 189.13 327.56 C202.19 326.97 215.25 184.00 228.31 184 C234.84 184.00 241.37 316.46 247.9 320.16 C260.96 327.56 274.02 327.35 287.08 327.56 C306.67 327.88 326.26 328.20 345.85 328.45 C365.44 328.70 385.03 329.04 404.62 329.04 C411.15 329.04 417.68 258.00 424.21 258 C430.74 258.00 437.26 321.35 443.79 323.12 C463.38 328.45 482.97 328.29 502.56 328.45 C522.15 328.61 541.74 329.04 561.33 329.04 C580.92 329.04 600.51 317.20 620.1 317.2 C626.63 317.20 633.16 327.07 639.69 327.56 C659.28 329.04 678.87 329.04 698.46 329.04 C711.52 329.04 724.58 317.20 737.64 317.2 C744.17 317.20 750.70 328.06 757.23 328.45 C776.82 329.63 796.41 329.55 816 329.63 L816 332 Z"/>
+        <path class="cx-line" d="M52 36 C58.53 127.76 65.06 297.98 71.59 311.28 C78.12 324.58 84.65 323.90 91.18 324.6 C104.24 326.01 117.30 328.45 130.36 328.45 C149.95 328.45 169.54 328.45 189.13 327.56 C202.19 326.97 215.25 184.00 228.31 184 C234.84 184.00 241.37 316.46 247.9 320.16 C260.96 327.56 274.02 327.35 287.08 327.56 C306.67 327.88 326.26 328.20 345.85 328.45 C365.44 328.70 385.03 329.04 404.62 329.04 C411.15 329.04 417.68 258.00 424.21 258 C430.74 258.00 437.26 321.35 443.79 323.12 C463.38 328.45 482.97 328.29 502.56 328.45 C522.15 328.61 541.74 329.04 561.33 329.04 C580.92 329.04 600.51 317.20 620.1 317.2 C626.63 317.20 633.16 327.07 639.69 327.56 C659.28 329.04 678.87 329.04 698.46 329.04 C711.52 329.04 724.58 317.20 737.64 317.2 C744.17 317.20 750.70 328.06 757.23 328.45 C776.82 329.63 796.41 329.55 816 329.63"/>
 
-        <!-- peaks -->
-        <circle class="cx-dot" cx="58" cy="34" r="4.5"/>
-        <circle class="cx-dot" cx="290.6" cy="34" r="4.5"/>
-        <circle class="cx-dot" cx="581.4" cy="176.1" r="4.5"/>
+        <circle class="cx-dot" cx="52" cy="36" r="4.5"/>
+        <circle class="cx-dot" cx="228.31" cy="184" r="4.5"/>
+        <circle class="cx-dot" cx="424.21" cy="258" r="4.5"/>
+        <circle class="cx-dot" cx="620.1" cy="317.2" r="4.5"/>
 
-        <!-- annotations -->
-        <text class="cx-note" x="66" y="30">Run 1 — LLM writes the recipe</text>
-        <text class="cx-note" x="300" y="30">UI changes &#8594; 1 heal</text>
-        <line class="cx-lead" x1="581.4" y1="176.1" x2="594" y2="158"/>
-        <text class="cx-note" x="596" y="150">Auto-capture:</text>
-        <text class="cx-note-sm" x="596" y="166">later heals get cheaper</text>
-        <text class="cx-note-sm" x="426" y="300" text-anchor="middle">Every replay &#8776; 0% AI — no LLM</text>
+        <text class="cx-note-sm" x="60" y="30">author</text>
+        <text class="cx-pct" x="228" y="174" text-anchor="middle">50%</text>
+        <text class="cx-pct" x="424" y="248" text-anchor="middle">25%</text>
+        <text class="cx-pct" x="620" y="307" text-anchor="middle">5%</text>
       </svg>
-      <figcaption>AI in the loop vs. how many times a task has run — author once, replay free, heal on change, back to zero.</figcaption>
+      <figcaption>AI in the loop vs. times a task runs — author once; even heals need less AI over time.</figcaption>
     </figure>
   </div>
 </section>
