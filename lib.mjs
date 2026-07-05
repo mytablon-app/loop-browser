@@ -326,48 +326,75 @@ function saveCapture(page, kind, target, resolved, score) {
   try { mkdirSync(_capDir, { recursive: true }); writeFileSync(_capPath(domain), JSON.stringify(data, null, 2) + "\n"); return true; } catch { return false; }
 }
 
+// Content child frames worth searching — modals/editors/uploaders often render inside
+// an <iframe> the top frame can't see. Bounded; skips about:blank/empty ad frames.
+const childFrames = (page) =>
+  page.frames().filter((f) => f !== page.mainFrame() && f.url() && !/^about:/.test(f.url())).slice(0, 6);
+
 async function healFind(page, target, sel, kind = "el") {
-  const match = await page.evaluate(
-    ({ target, sel }) => {
-      const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
-      const tWords = norm(target).split(" ").filter(Boolean);
-      if (!tWords.length) return null;
-      document.querySelectorAll("[data-loop-heal]").forEach((e) => e.removeAttribute("data-loop-heal"));
-      let best = null, bestScore = 0, bestText = "";
-      for (const el of document.querySelectorAll(sel)) {
-        const name = el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.textContent || "";
-        const nWords = new Set(norm(name).split(" "));
-        if (!nWords.size) continue;
-        const hit = tWords.filter((w) => nWords.has(w)).length;
-        const score = hit / tWords.length; // fraction of target words present
-        if (score > bestScore) { bestScore = score; best = el; bestText = name.trim().slice(0, 80); }
-      }
-      if (best && bestScore >= 0.6) { best.setAttribute("data-loop-heal", "1"); return { score: bestScore, text: bestText }; }
-      // High-precision fallback (only after word-overlap fails): exactly ONE candidate
-      // whose accessible name contains the full target phrase — or is a short label
-      // contained by it — i.e. an unambiguous rename like "Send message" → "Send".
-      // Length-bounded so a big container whose text merely includes the phrase can't win;
-      // require a single distinct name so ambiguity → give up (safe on destructive flows).
-      const tPhrase = tWords.join(" ");
-      const subs = [];
-      for (const el of document.querySelectorAll(sel)) {
-        const nm = norm(el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.textContent || "");
-        if (nm.length < 2 || nm.length > tPhrase.length * 2.2 + 12) continue;
-        if (nm.includes(tPhrase) || tPhrase.includes(nm)) subs.push({ el, nm });
-      }
-      const uniq = [...new Set(subs.map((s) => s.nm))];
-      if (uniq.length === 1) { subs[0].el.setAttribute("data-loop-heal", "1"); return { score: 0.6, text: subs[0].nm.slice(0, 80), via: "substring" }; }
-      return null;
-    },
-    { target, sel }
-  );
-  if (!match) return null;
-  const how = match.via === "substring" ? "substring match" : `${Math.round(match.score * 100)}% word match`;
-  console.log(`  ↻ self-healed: "${target}" → "${match.text}" (${how})`);
-  if (saveCapture(page, kind, target, match.text, match.score))
-    console.log(`  ⓘ captured: next run tries "${match.text}" first for "${target}"`);
-  try { page.__loopHealed = true; } catch {}   // graduation signal: this run needed a heal
-  return page.locator('[data-loop-heal="1"]').first();
+  // Search the MAIN frame first, then content iframes — a target inside an iframe modal
+  // used to be unfindable AND unhealable (snapshot saw it, the engine couldn't act).
+  for (const root of [page, ...childFrames(page)]) {
+    let match = null;
+    try {
+      match = await root.evaluate(
+        ({ target, sel }) => {
+          const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+          const tWords = norm(target).split(" ").filter(Boolean);
+          if (!tWords.length) return null;
+          // DEEP COLLECT: raw querySelectorAll can't see into open shadow roots — where
+          // many sites hide their real buttons. Walk shadow roots too.
+          const collect = (selector) => {
+            const out = [...document.querySelectorAll(selector)];
+            const walk = (node) => {
+              for (const el of node.querySelectorAll("*"))
+                if (el.shadowRoot) { out.push(...el.shadowRoot.querySelectorAll(selector)); walk(el.shadowRoot); }
+            };
+            walk(document);
+            return out;
+          };
+          collect("[data-loop-heal]").forEach((e) => e.removeAttribute("data-loop-heal"));
+          const els = collect(sel);
+          let best = null, bestScore = 0, bestText = "";
+          for (const el of els) {
+            const name = el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.textContent || "";
+            const nWords = new Set(norm(name).split(" "));
+            if (!nWords.size) continue;
+            const hit = tWords.filter((w) => nWords.has(w)).length;
+            const score = hit / tWords.length; // fraction of target words present
+            if (score > bestScore) { bestScore = score; best = el; bestText = name.trim().slice(0, 80); }
+          }
+          if (best && bestScore >= 0.6) { best.setAttribute("data-loop-heal", "1"); return { score: bestScore, text: bestText }; }
+          // High-precision fallback (only after word-overlap fails): exactly ONE candidate
+          // whose accessible name contains the full target phrase — or is a short label
+          // contained by it — i.e. an unambiguous rename like "Send message" → "Send".
+          // Length-bounded so a big container whose text merely includes the phrase can't win;
+          // require a single distinct name so ambiguity → give up (safe on destructive flows).
+          const tPhrase = tWords.join(" ");
+          const subs = [];
+          for (const el of els) {
+            const nm = norm(el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.textContent || "");
+            if (nm.length < 2 || nm.length > tPhrase.length * 2.2 + 12) continue;
+            if (nm.includes(tPhrase) || tPhrase.includes(nm)) subs.push({ el, nm });
+          }
+          const uniq = [...new Set(subs.map((s) => s.nm))];
+          if (uniq.length === 1) { subs[0].el.setAttribute("data-loop-heal", "1"); return { score: 0.6, text: subs[0].nm.slice(0, 80), via: "substring" }; }
+          return null;
+        },
+        { target, sel }
+      );
+    } catch {}
+    if (match) {
+      const where = root === page ? "" : " (in iframe)";
+      const how = match.via === "substring" ? "substring match" : `${Math.round(match.score * 100)}% word match`;
+      console.log(`  ↻ self-healed: "${target}" → "${match.text}" (${how}${where})`);
+      if (saveCapture(page, kind, target, match.text, match.score))
+        console.log(`  ⓘ captured: next run tries "${match.text}" first for "${target}"`);
+      try { page.__loopHealed = true; } catch {}   // graduation signal: this run needed a heal
+      return root.locator('[data-loop-heal="1"]').first();
+    }
+  }
+  return null;
 }
 
 // Reliable element finding by human label — tries several strategies in order,
@@ -389,13 +416,15 @@ export async function findInput(page, label, { timeout = 25000 } = {}) {
     // EXACT label first, captured heal second: the capture exists because exact once
     // FAILED — but if the site restores the exact label (and the captured name still
     // matches something else), the capture must not beat the truth forever.
-    const candidates = [
-      page.getByLabel(re),
-      page.getByPlaceholder(re),
-      ...(capRe ? [page.getByLabel(capRe), page.getByPlaceholder(capRe), page.getByRole("textbox", { name: capRe })] : []),
-      page.getByRole("searchbox", { name: re }),
-      page.getByRole("textbox", { name: re }),
+    // Main frame first, then content IFRAMES (compose/editor/upload modals live there).
+    const namedIn = (root) => [
+      root.getByLabel(re),
+      root.getByPlaceholder(re),
+      ...(capRe ? [root.getByLabel(capRe), root.getByPlaceholder(capRe), root.getByRole("textbox", { name: capRe })] : []),
+      root.getByRole("searchbox", { name: re }),
+      root.getByRole("textbox", { name: re }),
     ];
+    const candidates = [...namedIn(page), ...childFrames(page).flatMap(namedIn)];
     // Probe all candidates in PARALLEL (each count() is a CDP round-trip; serial
     // probing paid 6-8 round-trip latencies per cycle) — preference order is kept
     // by picking the FIRST index that hit, not the first response.
@@ -423,12 +452,13 @@ export async function findClickable(page, text, { timeout = 25000 } = {}) {
   const capRe = cap && new RegExp(escapeRegExp(cap), "i");
   const deadline = Date.now() + timeout;
   do {
-    const candidates = [
-      page.getByRole("button", { name: re }),                 // exact first, capture second (see findInput)
-      page.getByRole("link", { name: re }),
-      ...(capRe ? [page.getByRole("button", { name: capRe }), page.getByRole("link", { name: capRe })] : []),
-      page.getByText(re),
+    const clickIn = (root) => [
+      root.getByRole("button", { name: re }),                 // exact first, capture second (see findInput)
+      root.getByRole("link", { name: re }),
+      ...(capRe ? [root.getByRole("button", { name: capRe }), root.getByRole("link", { name: capRe })] : []),
+      root.getByText(re),
     ];
+    const candidates = [...clickIn(page), ...childFrames(page).flatMap(clickIn)];   // main frame first, then iframes
     const counts = await Promise.all(candidates.map((c) => c.first().count().catch(() => 0)));   // parallel probe (see findInput)
     const hit = counts.findIndex((n) => n > 0);
     if (hit >= 0) return candidates[hit].first();
@@ -521,6 +551,41 @@ export async function clickRobust(page, target, { opens = null, timeout = 4000 }
     if (await waitOpened(page, el, before, expanded0, opens, timeout)) return { ok: true, opened: true, strategy: strat };
   }
   return { ok: false, opened: false, strategy: "exhausted" };
+}
+
+// UPLOADS — never let a native picker open (it's invisible to CDP and freezes the cook).
+// A persistent page-level filechooser handler catches the chooser WHENEVER it fires and
+// sets the file programmatically, so the native dialog never shows. (A per-click
+// waitForEvent("filechooser") is a RACE — proven failure mode; don't regress to it.)
+const _armedPages = new WeakSet();
+let _pendingUpload = null;
+function armFileChooser(page) {
+  if (_armedPages.has(page)) return;
+  _armedPages.add(page);
+  page.on("filechooser", async (fc) => {
+    const f = _pendingUpload;                    // capture + consume once — a stray chooser
+    if (!f) return;                              // can't reattach a stale file later
+    _pendingUpload = null;
+    try { await fc.setFiles(f); } catch {}
+  });
+}
+export async function uploadFile(page, trigger, filePath) {
+  if (!existsSync(filePath)) throw new Error(`upload: file not found: ${filePath}`);
+  armFileChooser(page);
+  _pendingUpload = filePath;
+  const el = await findClickableVisible(page, trigger);
+  await highlight(el).catch(() => {});
+  await el.click();
+  const deadline = Date.now() + 6000;            // wait for the handler to consume the file
+  while (Date.now() < deadline && _pendingUpload) await sleep(250);
+  if (_pendingUpload) {
+    _pendingUpload = null;
+    // Chooser never reached Playwright — belt-and-suspenders: set a file input directly.
+    const input = page.locator('input[type="file"]').first();
+    if (await input.count()) { await input.setInputFiles(filePath); return { via: "input" }; }
+    throw new Error(`upload: chooser never fired and no <input type=file> found — a NATIVE picker may be stranded (see it: loop shot-os · close it: loop os-dismiss)`);
+  }
+  return { via: "chooser" };
 }
 
 // "Main match → mini match": open a search result (e.g. a WhatsApp chat) by name.
@@ -678,6 +743,29 @@ export async function runStep(page, step, vars = {}) {
       await page.waitForTimeout(step.ms || 1000);
       console.log(`  · wait ${step.ms || 1000}ms`);
       break;
+    case "wait-for": {
+      // Condition-wait: poll for text (or a selector) up to `ms` — replaces blind sleeps
+      // and gives recipes a POSITIVE readiness/success signal ("Post successful").
+      const ms = step.ms || 15000;
+      const label = step.sel ? v(step.sel) : v(step.text || "");
+      if (!label) throw new Error(`wait-for needs "text" or "sel"`);
+      const what = step.sel ? page.locator(v(step.sel)) : page.getByText(new RegExp(escapeRegExp(label), "i"));
+      const deadline = Date.now() + ms;
+      let found = false;
+      while (Date.now() < deadline) {
+        if (await what.first().count().catch(() => 0)) { found = true; break; }
+        await sleep(400);
+      }
+      if (!found) throw new Error(`wait-for: "${label}" did not appear within ${ms}ms`);
+      console.log(`  · wait-for "${label}" ✓`);
+      break;
+    }
+    case "upload": {
+      // Attach a file via the chooser-interception primitive (never a native picker).
+      const r = await uploadFile(page, v(step.target), v(step.file));
+      console.log(`  · upload "${v(step.file)}" via "${v(step.target)}" (${r.via})`);
+      break;
+    }
     case "assert": {
       const found = await page
         .getByText(new RegExp(escapeRegExp(v(step.text)), "i"))   // literal text — "(1)" must not parse as a regex group

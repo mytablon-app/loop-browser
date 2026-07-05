@@ -77,7 +77,9 @@ them current; there's no npm/download install). Tell them to clone and link it:
      ]
    }
    ```
-   Step verbs: `open · fill · click · press · wait · assert · read · snapshot · extract · click-xy · scrape-members · open-chat`.
+   Step verbs: `open · fill · click · press · wait · wait-for · assert · read · snapshot · extract · upload · click-xy · scrape-members · open-chat`.
+   - `wait-for` `{ "do":"wait-for", "text":"Post successful", "ms":15000 }` (or `"sel":"<css>"`) — poll for a POSITIVE signal instead of a blind sleep. Use it to verify sends.
+   - `upload` `{ "do":"upload", "target":"Add photo", "file":"{image}" }` — intercepts the file chooser so a native picker (invisible to CDP) never opens. NEVER plain-click an upload button.
    Target by **role/label/text**, never pixel coordinates (use `click-xy` only as a vision fallback).
    Use `{placeholders}` for ingredients; pass them at run time as `key=value`.
 4. Test with `loop run <name> …` and iterate until it's clean.

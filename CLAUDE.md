@@ -68,7 +68,7 @@ The CLI speaks **CDP** to `localhost:9222` via Playwright `connectOverCDP`. Non-
   "ingredients": { "group":"<placeholder>", "outDir":"./dishes" },
   "steps": [ { "do":"open","url":"…" }, { "do":"fill","target":"<label>","value":"{group}" } ] }
 ```
-Step verbs: `open · fill · click · press · wait · assert · read · snapshot · extract · click-xy · scrape-members · open-chat`.
+Step verbs: `open · fill · click · press · wait · wait-for` (poll text/sel — the positive-signal verify) `· assert · read · snapshot · extract · upload` (chooser-intercept — never click a native picker open) `· click-xy · scrape-members · open-chat`. Finders + heal search the main frame THEN content iframes, and heal pierces open shadow DOM.
 **Target by role/label/text, never coordinates** (`click-xy` = vision fallback only). Use `{placeholders}` for ingredients. `recipes/local/` = private overlay (real URLs/paths), shadows shipped templates; a `ticket` block + `loop serve` cooks from a pantry of tickets.
 
 ## Authoring & healing (the brain's two jobs)
