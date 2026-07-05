@@ -8,15 +8,17 @@
 <link rel="icon" href="loop-icon.svg" type="image/svg+xml" />
 <!-- Social share (Open Graph + Twitter). Set og:url + the og.png to the deployed URL at launch. -->
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Loop Browser — command the web from your CLI" />
-<meta property="og:description" content="Your kitchen for the web: a head chef turns simple recipes (commands) into amazing dishes (automations). Local-first, deterministic, ~$0 to re-run." />
-<meta property="og:image" content="og.png" />
+<meta property="og:url" content="https://loop-browser.vercel.app/" />
+<meta property="og:title" content="Loop Browser — an AI browser that automates without AI" />
+<meta property="og:description" content="Written once with AI; replayed forever without it. AI use falls to zero as a task repeats — local, deterministic, ~$0 per run." />
+<meta property="og:image" content="https://loop-browser.vercel.app/og.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Chart: AI in the loop falls to zero as a task repeats — 100% on the first run when the LLM writes the recipe, near zero on replays, brief heal spikes that get cheaper over time." />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Loop Browser — command the web from your CLI" />
-<meta name="twitter:description" content="Your kitchen for the web. Cook any task as a dish, served forever by deterministic line cooks." />
-<meta name="twitter:image" content="og.png" />
+<meta name="twitter:title" content="Loop Browser — an AI browser that automates without AI" />
+<meta name="twitter:description" content="Written once with AI; replayed forever without it. AI use falls to zero as a task repeats — local, deterministic, ~$0 per run." />
+<meta name="twitter:image" content="https://loop-browser.vercel.app/og.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -298,6 +300,91 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <div class="rv d6"><span class="dl-count" id="dl-count" style="display:none"><span class="pulse"></span><b id="dl-count-n">—</b>&nbsp;downloads</span></div>
   </div>
 </header>
+
+<section class="cost">
+  <style>
+    :root{--ai:#fbbf24}
+    html[data-theme="light"]{--ai:#d97706}
+    .cost{padding:64px 0 26px}
+    .cost .head{text-align:center;max-width:720px;margin:0 auto 30px}
+    .cost h2{font-family:var(--display);font-weight:800;font-size:clamp(1.7rem,3.8vw,2.6rem);letter-spacing:-.02em;margin-bottom:12px}
+    .cost .sub{color:var(--muted);font-size:clamp(1rem,1.6vw,1.14rem)}
+    .cost-fig{margin:0;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:20px 18px 12px;backdrop-filter:blur(10px);box-shadow:var(--shadow)}
+    .cost-fig svg{width:100%;height:auto;display:block;overflow:visible}
+    .cost-fig figcaption{margin-top:12px;text-align:center;color:var(--faint);font-size:.82rem;font-family:var(--mono)}
+    .cx-grid{stroke:var(--border);stroke-width:1}
+    .cx-axis{stroke:var(--border-strong);stroke-width:1.2}
+    .cx-tick{fill:var(--faint);font-family:var(--mono);font-size:12px}
+    .cx-title{fill:var(--muted);font-family:var(--body);font-size:13px;font-weight:600}
+    .cx-line{fill:none;stroke:var(--ai);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+    .cx-dot{fill:var(--ai);stroke:var(--panel-2);stroke-width:2}
+    .cx-note{fill:var(--text);font-family:var(--body);font-size:13px;font-weight:700}
+    .cx-note-sm{fill:var(--muted);font-family:var(--body);font-size:12px;font-weight:500}
+    .cx-lead{stroke:var(--faint);stroke-width:1}
+    .cx-free{fill:var(--cyan);opacity:.07}
+  </style>
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">The economics</div>
+      <h2>AI use falls to <span class="g">zero</span> as a task repeats.</h2>
+      <p class="sub">The first run pays for the intelligence — the LLM writes the recipe. Every run after replays it deterministically, for free. When a page changes, one heal re-teaches the step; auto-capture makes the next heal cheaper, and it settles back to zero.</p>
+    </div>
+    <figure class="cost-fig">
+      <svg viewBox="0 0 840 380" role="img" aria-labelledby="cxT cxD">
+        <title id="cxT">AI in the loop versus number of times a task has run</title>
+        <desc id="cxD">Starts at 100% on the first run when the LLM authors the recipe, drops to near zero on deterministic replays, spikes when a UI change forces a heal, and settles back toward zero as each heal gets cheaper.</desc>
+        <defs>
+          <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--ai)" stop-opacity=".34"/>
+            <stop offset="1" stop-color="var(--ai)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+
+        <!-- free zone -->
+        <rect class="cx-free" x="58" y="315" width="756" height="15"/>
+
+        <!-- y grid + ticks -->
+        <line class="cx-grid" x1="58" y1="34"  x2="814" y2="34"/>
+        <line class="cx-grid" x1="58" y1="108" x2="814" y2="108"/>
+        <line class="cx-grid" x1="58" y1="182" x2="814" y2="182"/>
+        <line class="cx-grid" x1="58" y1="256" x2="814" y2="256"/>
+        <text class="cx-tick" x="50" y="38"  text-anchor="end">100%</text>
+        <text class="cx-tick" x="50" y="112" text-anchor="end">75</text>
+        <text class="cx-tick" x="50" y="186" text-anchor="end">50</text>
+        <text class="cx-tick" x="50" y="260" text-anchor="end">25</text>
+        <text class="cx-tick" x="50" y="334" text-anchor="end">0</text>
+        <text class="cx-title" transform="translate(16,182) rotate(-90)" text-anchor="middle">AI in the loop</text>
+
+        <!-- x axis + ticks -->
+        <line class="cx-axis" x1="58" y1="330" x2="814" y2="330"/>
+        <text class="cx-tick" x="58"  y="350" text-anchor="middle">1</text>
+        <text class="cx-tick" x="232" y="350" text-anchor="middle">10</text>
+        <text class="cx-tick" x="426" y="350" text-anchor="middle">20</text>
+        <text class="cx-tick" x="620" y="350" text-anchor="middle">30</text>
+        <text class="cx-tick" x="814" y="350" text-anchor="middle">40</text>
+        <text class="cx-title" x="436" y="373" text-anchor="middle">Times the task runs &#8594;</text>
+
+        <!-- area + line -->
+        <path fill="url(#costGrad)" d="M 58 330 L 58 34 L 77.4 303.4 L 96.8 321.1 L 116.2 325.9 L 154.9 326.7 L 193.7 325.3 L 232.5 327 L 271.2 326.2 L 290.6 34 L 310 312.2 L 329.4 323.5 L 348.8 326.4 L 387.5 327 L 445.7 325.9 L 503.8 327 L 562 326.4 L 581.4 176.1 L 600.8 318.2 L 620.2 325.3 L 658.9 327 L 717.1 327.3 L 775.2 326.7 L 814 327.9 L 814 330 Z"/>
+        <path class="cx-line" d="M58 34 L77.4 303.4 L96.8 321.1 L116.2 325.9 L154.9 326.7 L193.7 325.3 L232.5 327 L271.2 326.2 L290.6 34 L310 312.2 L329.4 323.5 L348.8 326.4 L387.5 327 L445.7 325.9 L503.8 327 L562 326.4 L581.4 176.1 L600.8 318.2 L620.2 325.3 L658.9 327 L717.1 327.3 L775.2 326.7 L814 327.9"/>
+
+        <!-- peaks -->
+        <circle class="cx-dot" cx="58" cy="34" r="4.5"/>
+        <circle class="cx-dot" cx="290.6" cy="34" r="4.5"/>
+        <circle class="cx-dot" cx="581.4" cy="176.1" r="4.5"/>
+
+        <!-- annotations -->
+        <text class="cx-note" x="66" y="30">Run 1 — LLM writes the recipe</text>
+        <text class="cx-note" x="300" y="30">UI changes &#8594; 1 heal</text>
+        <line class="cx-lead" x1="581.4" y1="176.1" x2="594" y2="158"/>
+        <text class="cx-note" x="596" y="150">Auto-capture:</text>
+        <text class="cx-note-sm" x="596" y="166">later heals get cheaper</text>
+        <text class="cx-note-sm" x="426" y="300" text-anchor="middle">Every replay &#8776; 0% AI — no LLM</text>
+      </svg>
+      <figcaption>AI in the loop vs. how many times a task has run — author once, replay free, heal on change, back to zero.</figcaption>
+    </figure>
+  </div>
+</section>
 
 <section>
   <div class="wrap">
