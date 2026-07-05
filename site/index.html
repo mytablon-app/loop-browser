@@ -231,7 +231,13 @@ html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 92%,transpar
 /* founder-friendly install cards + copy button */
 .get-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:34px;text-align:left}
 @media(max-width:720px){.get-grid{grid-template-columns:1fr}}
-.get-card{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:26px;display:flex;flex-direction:column}
+/* min-width:0 at every link: a nowrap descendant (the git-clone command) otherwise
+   forces its full unwrapped width up through EACH flex/grid ancestor in turn — grid
+   and flex items default to min-width:auto (= "don't shrink below my content"), so
+   without an explicit override at every level the card blows past the viewport on
+   mobile instead of the command scrolling inside its own pill. */
+.get-grid>*{min-width:0}
+.get-card{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:26px;display:flex;flex-direction:column;min-width:0}
 .get-num{position:absolute;top:20px;right:22px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:.95rem;background:var(--panel-2);border:1px solid var(--border-strong);color:var(--muted)}
 .get-tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px}
 .get-card h3{font-family:var(--display);font-weight:700;font-size:1.32rem;letter-spacing:-.01em;margin-bottom:8px}
@@ -245,9 +251,9 @@ html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 92%,transpar
 .cmd .copy.ok{color:#28c840;border-color:#28c840}
 .copied{font-size:.78rem;color:#28c840;font-family:var(--mono);margin-left:10px;opacity:0;transition:opacity .2s}
 .copied.show{opacity:1}
-.cmd-row{margin-top:16px}
+.cmd-row{margin-top:16px;min-width:0}
 .cmd-label{display:block;font-size:.78rem;color:var(--faint);margin-bottom:7px}
-.cmd{width:100%;max-width:100%;overflow-x:auto}
+.cmd{width:100%;max-width:100%;min-width:0;overflow-x:auto}
 .cmd code{flex:1;min-width:0}
 
 footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
@@ -552,7 +558,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 
 <section id="menu">
   <div class="wrap center">
-    <div class="eyebrow">On the menu</div>
+    <div class="eyebrow">Use cases</div>
     <h2>Sample dishes you can cook</h2>
     <p class="sub center">If you can do it in a browser, it can be automated.</p>
   </div>
