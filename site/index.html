@@ -9,21 +9,21 @@
 <!-- Social share (Open Graph + Twitter). Set og:url + the og.png to the deployed URL at launch. -->
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://loop-browser.vercel.app/" />
-<meta property="og:title" content="Loop Browser — an AI browser that automates without AI" />
+<meta property="og:title" content="Loop Browser — an AI browser that runs without AI" />
 <meta property="og:description" content="Written once with AI; replayed forever without it. AI use falls to zero as a task repeats — local, deterministic, ~$0 per run." />
 <meta property="og:image" content="https://loop-browser.vercel.app/og.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:image:alt" content="Chart: AI in the loop falls to zero as a task repeats — 100% on the first run when the LLM writes the recipe, near zero on replays, brief heal spikes that get cheaper over time." />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Loop Browser — an AI browser that automates without AI" />
+<meta name="twitter:title" content="Loop Browser — an AI browser that runs without AI" />
 <meta name="twitter:description" content="Written once with AI; replayed forever without it. AI use falls to zero as a task repeats — local, deterministic, ~$0 per run." />
 <meta name="twitter:image" content="https://loop-browser.vercel.app/og.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
-:root{--claude:#d97757;
+:root{
   --ink:#070b14; --ink2:#0b1120;
   --panel:rgba(255,255,255,.045); --panel-2:rgba(255,255,255,.07);
   --border:rgba(255,255,255,.10); --border-strong:rgba(255,255,255,.18);
@@ -105,8 +105,6 @@ header{position:relative;text-align:center;min-height:calc(100svh - 62px);displa
 @media(prefers-reduced-motion:reduce){.orbit i,.orbit .dot{animation:none}}
 
 .hero-logo{width:74px;height:74px;border-radius:20px;box-shadow:var(--shadow);}
-.cc{color:var(--claude);font-weight:700;white-space:nowrap}
-.cc-star{width:.92em;height:.92em;vertical-align:-.13em;margin-right:.26em}
 .pill{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:var(--muted);
   border:1px solid var(--border);background:var(--panel);padding:6px 14px;border-radius:999px;margin-bottom:14px}
 .pill .ok{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
@@ -182,11 +180,6 @@ code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1p
 .step p{color:var(--muted);font-size:.93rem}
 .step a{display:inline-block;margin-top:12px;color:var(--cyan);text-decoration:none;font-weight:600;font-size:.9rem}
 .step a:hover{text-decoration:underline}
-
-/* downloads counter pill */
-.dl-count{display:inline-flex;align-items:center;gap:6px;margin-top:16px;color:var(--faint);font-size:.85rem;font-family:var(--mono)}
-.dl-count b{color:var(--muted);font-weight:700}
-.dl-count .pulse{display:none}
 
 /* terminal */
 .term{max-width:760px;margin:0 auto;border-radius:16px;border:1px solid var(--border-strong);background:color-mix(in srgb,#05080f 78%,transparent);
@@ -290,14 +283,13 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
   <div class="orbit"><i></i><i></i><i></i><div class="dot"></div><div class="dot dot2"></div></div>
   <div class="wrap">
     <img src="loop-icon.svg" class="hero-logo rv d1" alt="Loop Browser" />
-    <h1 class="rv d3">Command any site<br>from your <span class="g">CLI</span>.</h1>
-    <p class="rv d3" style="font-size:clamp(1.1rem,2.2vw,1.45rem);font-weight:650;letter-spacing:-.01em;margin:0 auto 14px;max-width:620px">AI browser that automates <span class="g">without AI</span>.</p>
+    <h1 class="rv d3">Automate any site<br>from your <span class="g">CLI</span>.</h1>
+    <p class="rv d3" style="font-size:clamp(1.1rem,2.2vw,1.45rem);font-weight:650;letter-spacing:-.01em;margin:0 auto 14px;max-width:620px">AI browser that runs <span class="g">without AI</span>.</p>
     <p class="lede rv d4">Turn repeating web tasks into <strong>loops</strong>. Written once with AI; replayed forever <strong class="g">without it</strong>.</p>
     <div class="cta rv d5">
       <a href="#download" class="btn btn-primary">Get Loop ↓<span class="btn-beta">beta</span></a>
       <a href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener" class="btn btn-ghost">View on GitHub ↗</a>
     </div>
-    <div class="rv d6"><span class="dl-count" id="dl-count" style="display:none"><span class="pulse"></span><b id="dl-count-n">—</b>&nbsp;downloads</span></div>
   </div>
 </header>
 
@@ -329,7 +321,7 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <div class="head">
       <div class="eyebrow">The economics</div>
       <h2>AI use falls to <span class="g">zero</span> as a task repeats.</h2>
-      <p class="sub">Written once. Replayed free. Even the heals get cheaper over time.</p>
+      <p class="sub">Written once. Replayed free. Self-heals on change.</p>
     </div>
     <figure class="cost-fig">
       <svg viewBox="0 0 840 380" role="img" aria-labelledby="cxT cxD">
@@ -395,6 +387,35 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 
 <span class="p">$</span> <span class="c">loop</span> <span class="a">run pull-report</span>
   · open the dashboard · extract "table tr" → <span class="ok">42 rows</span> → dishes/report.csv</pre>
+    </div>
+  </div>
+</section>
+
+<section id="how" class="howx">
+  <style>
+    .howx{padding:58px 0 8px}
+    .howx .head{text-align:center;margin-bottom:32px}
+    .howx h2{font-family:var(--display);font-weight:800;font-size:clamp(1.7rem,3.8vw,2.6rem);letter-spacing:-.02em}
+    .howx-flow{display:flex;align-items:stretch;justify-content:center;gap:14px;flex-wrap:wrap;max-width:960px;margin:0 auto}
+    .howx-step{flex:1 1 240px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:24px 22px;backdrop-filter:blur(10px)}
+    .howx-step .k{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px}
+    .howx-step h3{font-family:var(--display);font-weight:700;font-size:1.3rem;letter-spacing:-.01em;margin-bottom:7px}
+    .howx-step p{color:var(--muted);font-size:.95rem}
+    .howx-step code{font-family:var(--mono);font-size:.85em;color:var(--text);background:var(--panel-2);padding:1px 6px;border-radius:6px}
+    .howx-arrow{display:flex;align-items:center;color:var(--faint);font-size:1.5rem}
+    @media(max-width:760px){.howx-arrow{transform:rotate(90deg);justify-content:center}}
+  </style>
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">How it works</div>
+      <h2>Author once. Replay forever.</h2>
+    </div>
+    <div class="howx-flow">
+      <div class="howx-step"><div class="k">01 · Author</div><h3>Teach it once</h3><p>Tell the LLM a task; it writes a <b>recipe</b> — fixed steps that target elements by name.</p></div>
+      <div class="howx-arrow">&#8594;</div>
+      <div class="howx-step"><div class="k">02 · Replay</div><h3>Run it forever</h3><p><code>loop run</code> replays it deterministically. No LLM, ~$0 a run.</p></div>
+      <div class="howx-arrow">&#8594;</div>
+      <div class="howx-step"><div class="k">03 · Heal</div><h3>Fix on change</h3><p>If the page changes, the LLM re-teaches that one step — then it's free again.</p></div>
     </div>
   </div>
 </section>
@@ -549,6 +570,20 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
     <a href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener">GitHub</a>
     <span class="sep">Command from CLI · Watch it happen</span>
   </div>
+  <div class="wrap powered-row">
+    <span class="powered">Powered by
+      <img class="tbl-d" src="tablon-white.png" alt="Tablon" />
+      <img class="tbl-l" src="tablon-color.png" alt="Tablon" />
+    </span>
+  </div>
+  <style>
+    .powered-row{display:flex;justify-content:center;margin-top:24px}
+    .powered{display:inline-flex;align-items:center;gap:8px;color:var(--faint);font-size:.85rem}
+    .powered img{height:17px;width:auto;display:block}
+    .powered .tbl-l{display:none}
+    html[data-theme="light"] .powered .tbl-d{display:none}
+    html[data-theme="light"] .powered .tbl-l{display:inline-block}
+  </style>
 </footer>
 
 <script>
