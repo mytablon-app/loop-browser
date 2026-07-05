@@ -253,8 +253,11 @@ if (cmd === "shot-os" || cmd === "os-shot") {
     const ps = `Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $b=[System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp=New-Object Drawing.Bitmap $b.Width,$b.Height; $g=[Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[Drawing.Point]::Empty,$b.Size); $bmp.Save('${out.replace(/\\/g, "\\\\")}')`;
     execSync(`powershell -NoProfile -Command "${ps}"`);
   } else {
-    console.error("shot-os: native-screen capture not wired for this platform");
-    process.exit(1);
+    // Linux best-effort: try the common screenshot tools in order (see PLATFORMS.md).
+    const tries = [`gnome-screenshot -f ${JSON.stringify(out)}`, `import -window root ${JSON.stringify(out)}`, `scrot ${JSON.stringify(out)}`];
+    let done = false;
+    for (const c of tries) { try { execSync(c, { stdio: "ignore" }); done = true; break; } catch {} }
+    if (!done) { console.error("shot-os: no screenshot tool found (tried gnome-screenshot, import, scrot) — install one. See PLATFORMS.md"); process.exit(1); }
   }
   console.log(`  · os-shot → ${out}`);
   console.log(`    (captures NATIVE dialogs that 'loop shot'/'snapshot' cannot — Read this PNG)`);
@@ -277,8 +280,9 @@ if (cmd === "os-dismiss" || cmd === "os-escape") {
   } else if (process.platform === "win32") {
     try { execSync(`powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{ESC}')"`, { stdio: "ignore" }); } catch {}
   } else {
-    console.error("os-dismiss: not wired for this platform");
-    process.exit(1);
+    // Linux best-effort: xdotool if present (see PLATFORMS.md).
+    try { for (let i = 0; i < n; i++) execSync("xdotool key Escape", { stdio: "ignore" }); }
+    catch { console.error("os-dismiss: needs xdotool on Linux (sudo apt install xdotool). See PLATFORMS.md"); process.exit(1); }
   }
   console.log(`  · os-dismiss → sent Escape ×${n} (confirm with: loop shot-os)`);
   process.exit(0);
