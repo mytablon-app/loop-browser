@@ -157,8 +157,16 @@ async function tagPerson(page, realName, headline, slug) {
   if (!await search.isVisible({ timeout: 5000 }).catch(() => false)) { await exitTagPanel(page); return false; }
   await search.focus().catch(() => {}); await sleep(200);
   await search.pressSequentially(realName, { delay: 80 });
-  await sleep(20000);
+  // POLL for the typeahead rows (same 20s cap as the old flat sleep, but a fast
+  // typeahead no longer costs 20s per post) + a settle beat so names/headlines
+  // finish rendering before we read them.
   const sel = '[role="option"], li[class*="result"], li[class*="selectable"]';
+  const tagT0 = Date.now();
+  while (Date.now() - tagT0 < 20000) {
+    if (await page.locator(sel).count().catch(() => 0)) break;
+    await sleep(500);
+  }
+  await sleep(1500);
   const results = await page.locator(sel).evaluateAll(els => els.map(el => ({ text: el.textContent || "", html: el.innerHTML || "" }))).catch(() => []);
   const texts = results.map(r => r.text), htmls = results.map(r => r.html);
   const norm = s => (s || "").toLowerCase().replace(/\s+/g, " ").trim();

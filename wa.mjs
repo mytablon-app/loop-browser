@@ -87,12 +87,19 @@ export async function openChatExact(page, title) {
   if (!title) throw new Error("openChatExact: empty title");
   const box = await findInput(page, SEARCH);
   await box.click(); await box.fill(""); await box.pressSequentially(title, { delay: 60 });
-  await sleep(1800);
+  // Condition-waits, not blind sleeps: wait for the exact-title row (same tolerance
+  // as the old 1.8s sleep, but returns the moment it renders)…
   const exact = page.locator(`span[title="${title.replace(/"/g, '\\"')}"]`).first();
+  await exact.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
   if (!(await exact.count())) throw new Error(`openChatExact: no chat titled exactly "${title}"`);
   await exact.click();
-  await sleep(2200);
-  const header = (await page.$eval("#main header span[dir=auto]", (e) => e.innerText).catch(() => "?")).trim();
+  // …then poll the header until it matches (was a flat 2.2s sleep).
+  let header = "?";
+  for (let t = 0; t < 8; t++) {
+    await sleep(300);
+    header = (await page.$eval("#main header span[dir=auto]", (e) => e.innerText).catch(() => "?")).trim();
+    if (header === title) break;
+  }
   if (header !== title) throw new Error(`openChatExact: opened WRONG chat — wanted "${title}", got "${header}"`);
   return header;
 }
@@ -139,14 +146,18 @@ export async function sendMessage(page, title, text) {
   }
   await sleep(400);
   await page.keyboard.press("Enter");
-  await sleep(1500);
-  const rows = classify(await grab(page), null);
-  const last = rows[rows.length - 1];
   // VERIFY on whitespace-NORMALIZED text: the bubble reader collapses all whitespace
   // (incl. our newlines) to single spaces — a raw compare false-negatives on any
   // multi-line/multi-space message, and a false "not sent" invites a re-run = double-send.
+  // POLL for the bubble (up to 4s; was a flat 1.5s that could read too early OR waste time).
   const normWs = (s) => String(s || "").replace(/\s+/g, " ").trim();
-  const ok = !!last && last.dir === "me" && normWs(last.text) === normWs(text);
+  let last = null, ok = false;
+  for (let t = 0; t < 8 && !ok; t++) {
+    await sleep(500);
+    const rows = classify(await grab(page), null);
+    last = rows[rows.length - 1];
+    ok = !!last && last.dir === "me" && normWs(last.text) === normWs(text);
+  }
   return { ok, at: last?.date || null, lastBubble: last?.text || "" };
 }
 

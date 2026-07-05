@@ -211,6 +211,10 @@ export async function bgType(page, locator, text) {
 }
 
 // Draw a red box around the element BEFORE acting, so you SEE where it acts.
+// The pause exists only for watchability — the outline stays visible through the
+// action itself, so a short beat suffices. 400ms flat used to cost ~4s on a
+// 10-action recipe; tune with LOOP_HIGHLIGHT_MS (0 = draw but don't pause).
+const HIGHLIGHT_MS = Number.isFinite(+process.env.LOOP_HIGHLIGHT_MS) ? +process.env.LOOP_HIGHLIGHT_MS : 120;
 export async function highlight(locator) {
   const handle = await locator.elementHandle();
   if (!handle) return;
@@ -219,7 +223,7 @@ export async function highlight(locator) {
     el.style.outlineOffset = "2px";
     el.scrollIntoView({ behavior: "smooth", block: "center" });
   });
-  await sleep(400);
+  if (HIGHLIGHT_MS > 0) await sleep(HIGHLIGHT_MS);
 }
 
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -332,9 +336,12 @@ export async function findInput(page, label, { timeout = 25000 } = {}) {
       page.getByRole("searchbox", { name: re }),
       page.getByRole("textbox", { name: re }),
     ];
-    for (const c of candidates) {
-      if (await c.first().count()) return c.first();
-    }
+    // Probe all candidates in PARALLEL (each count() is a CDP round-trip; serial
+    // probing paid 6-8 round-trip latencies per cycle) — preference order is kept
+    // by picking the FIRST index that hit, not the first response.
+    const counts = await Promise.all(candidates.map((c) => c.first().count().catch(() => 0)));
+    const hit = counts.findIndex((n) => n > 0);
+    if (hit >= 0) return candidates[hit].first();
     await sleep(500);
   } while (Date.now() < deadline);
   // Deadline passed with no named match → try the unnamed generic inputs ONCE (a lone
@@ -362,9 +369,9 @@ export async function findClickable(page, text, { timeout = 25000 } = {}) {
       page.getByRole("link", { name: re }),
       page.getByText(re),
     ];
-    for (const c of candidates) {
-      if (await c.first().count()) return c.first();
-    }
+    const counts = await Promise.all(candidates.map((c) => c.first().count().catch(() => 0)));   // parallel probe (see findInput)
+    const hit = counts.findIndex((n) => n > 0);
+    if (hit >= 0) return candidates[hit].first();
     await sleep(500);
   } while (Date.now() < deadline);
   const healed = await healFind(page, text, '[role="button"],[role="link"],button,a', "clickable");
@@ -391,7 +398,10 @@ async function findClickableVisible(page, text, { timeout = 8000 } = {}) {
     }
     await sleep(300);
   } while (Date.now() < deadline);
-  return await findClickable(page, text);                                // fall back (may be phantom, but try)
+  // Fall back (may be phantom, but try) — with a SHORT timeout: the visible-scan above
+  // already waited its full window; stacking findClickable's 25s default on top made a
+  // missing element cost 33s per attempt (~100s across retries).
+  return await findClickable(page, text, { timeout: 10000 });
 }
 
 // Count VISIBLE overlays currently open (modals, menus, dropdowns) — the generic "did something
@@ -471,10 +481,14 @@ export async function openChat(page, name, searchLabel = "Search or start a new 
     await box.click();
     await box.fill("");
     await box.pressSequentially(term, { delay: 80 });
-    await sleep(1600); // let results render
 
     // Pick the visible result row that best matches the FULL name by word-overlap.
-    const score = await page.evaluate((full) => {
+    // Results render async — POLL for a match (up to the same 1.6s the old fixed
+    // sleep paid) instead of sleeping blind; usually resolves in one pass.
+    let score = null;
+    for (let attempt = 0; attempt < 4 && !score; attempt++) {
+      await sleep(attempt ? 400 : 500);
+      score = await page.evaluate((full) => {
       const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
       const tw = norm(full).split(" ").filter(Boolean);
       if (!tw.length) return null;
@@ -489,7 +503,8 @@ export async function openChat(page, name, searchLabel = "Search or start a new 
       }
       if (best && bs >= 0.5) { best.setAttribute("data-loop-open", "1"); return bs; }
       return null;
-    }, name);
+      }, name);
+    }
 
     if (score) {
       const el = page.locator('[data-loop-open="1"]').first();
@@ -554,10 +569,12 @@ export async function runStep(page, step, vars = {}) {
       await highlight(el);
       await el.click();
       await el.fill("");
-      // Human-like per-char pacing (deliberate, watchable). Scale the action
-      // timeout to the text length so long captions don't trip Playwright's
-      // 30s cap mid-type — a short default would silently break long posts.
-      const delay = step.delay ?? 110;
+      // Human-like per-char pacing (deliberate, watchable) for SHORT fills; long
+      // text (a caption) is what a human PASTES, so bound its total typing time
+      // (~20s) instead of paying 110ms/char (a 600-char caption used to take 66s).
+      // step.delay still overrides both. Scale the action timeout to the length
+      // so long captions don't trip Playwright's 30s cap mid-type.
+      const delay = step.delay ?? (text.length > 200 ? Math.max(15, Math.floor(20000 / text.length)) : 110);
       await el.pressSequentially(text, { delay, timeout: Math.max(30000, text.length * delay + 20000) });
       console.log(`  · fill "${v(step.target)}" = "${text}"`);
       break;
