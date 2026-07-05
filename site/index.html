@@ -294,6 +294,13 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 .foot .brand{font-size:1rem}
 .foot .sep{margin-left:auto;font-family:var(--mono);color:var(--muted)}
 .foot a{color:var(--muted);text-decoration:none}.foot a:hover{color:var(--text)}
+@media(max-width:680px){
+  /* the brand-left/tagline-right bar only works on one line; wrapped on mobile it
+     read as three inconsistently-aligned lines (left, half-pushed, centered below
+     it) — center the whole thing to match the centered .powered-row beneath it. */
+  .foot{justify-content:center;text-align:center}
+  .foot .sep{margin-left:0;width:100%}   /* flex items auto-blockify: width:100% forces it onto its own centered line */
+}
 
 /* ============ GLASS UPGRADE — futuristic minimal glass ============
    Three moves, in order of importance:
@@ -391,7 +398,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
       <button class="icon-btn hamburger" id="drawerOpen" aria-label="Open menu" aria-expanded="false" aria-controls="mobileDrawer">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
-      <a href="#download" class="btn-sm">Install</a>
+      <a href="#download" class="btn-sm desktop-only">Install</a>
     </div>
   </div>
 </nav>
