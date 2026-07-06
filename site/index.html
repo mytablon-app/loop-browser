@@ -433,7 +433,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     <p class="lede rv d4">Turn repeating web tasks into <strong>loops</strong>. Written once with AI; replayed forever <strong class="g">without it</strong>.</p>
     <div class="cta rv d5">
       <a href="#download" class="btn btn-primary">Get Loop ↓<span class="btn-beta">beta</span></a>
-      <a href="https://github.com/mytablon-app/loop-browser" target="_blank" rel="noopener" class="btn btn-ghost">View on GitHub ↗</a>
+      <a href="https://chat.whatsapp.com/G6DPynZAaViALcQqAdtUAB" target="_blank" rel="noopener" class="btn btn-ghost">
+        <svg class="wa-ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#25D366" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Z"/><path fill="#fff" d="M9.53 7.33c-.19-.42-.38-.43-.56-.44l-.48-.01c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1s.9 2.44 1.03 2.6c.13.17 1.75 2.8 4.32 3.82 2.13.84 2.57.67 3.03.63.46-.04 1.49-.61 1.7-1.2.21-.59.21-1.09.15-1.2-.06-.1-.23-.17-.48-.29-.25-.13-1.49-.73-1.72-.82-.23-.08-.4-.13-.56.13-.17.25-.65.82-.79.99-.15.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.66-1.25-1.48-1.4-1.73-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.55-1.38-.76-1.87Z"/></svg>
+        Community</a>
     </div>
   </div>
 </header>
@@ -710,6 +712,42 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
   </div>
 </section>
 
+<section id="updates" class="updates">
+  <style>
+    .updates{padding:56px 0}
+    .updates .box{max-width:620px;margin:0 auto;text-align:center;background:var(--glass);
+      border:1px solid var(--glass-border);border-radius:var(--r);padding:40px 30px;
+      box-shadow:inset 0 1px 0 var(--glass-hi),0 22px 50px -30px rgba(0,0,0,.5)}
+    .updates h2{font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,3.4vw,2.1rem);letter-spacing:-.02em;margin-bottom:10px}
+    .updates .sub{color:var(--muted);font-size:1rem;margin-bottom:22px}
+    .sub-form{display:flex;gap:10px;max-width:440px;margin:0 auto}
+    .sub-form input{flex:1;min-width:0;font-family:var(--body);font-size:1rem;color:var(--text);
+      background:var(--panel-2);border:1px solid var(--border-strong);border-radius:12px;padding:12px 16px;outline:none;transition:border-color .2s}
+    .sub-form input::placeholder{color:var(--faint)}
+    .sub-form input:focus{border-color:var(--cyan)}
+    .sub-form .btn-primary{white-space:nowrap;padding:12px 22px;border:none;cursor:pointer;font-size:1rem}
+    .sub-form button:disabled{opacity:.6;cursor:default}
+    .sub-msg{margin-top:14px;font-size:.9rem;min-height:1.2em;font-weight:600}
+    .sub-msg.ok{color:#28c840}
+    .sub-msg.err{color:#ff6b6b}
+    .sub-fine{margin-top:12px;font-size:.78rem;color:var(--faint)}
+    @media(max-width:560px){.sub-form{flex-direction:column}.sub-form .btn-primary{width:100%}}
+  </style>
+  <div class="wrap">
+    <div class="box">
+      <div class="eyebrow" style="color:var(--cyan)">Stay in the loop</div>
+      <h2>Know when updates land.</h2>
+      <p class="sub">Loop is in beta and moving fast. Get release notes in your inbox — nothing else.</p>
+      <form class="sub-form" id="subForm" novalidate>
+        <input type="email" id="subEmail" placeholder="you@example.com" required autocomplete="email" aria-label="Email address" />
+        <button type="submit" class="btn btn-primary" id="subBtn">Notify me</button>
+      </form>
+      <p class="sub-msg" id="subMsg" role="status" aria-live="polite"></p>
+      <p class="sub-fine">One email per release. No spam, unsubscribe anytime.</p>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="wrap foot">
     <a href="#" class="brand"><img src="loop-icon.svg" alt="" style="width:24px;height:24px;border-radius:6px" />Loop <b style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">Browser</b></a>
@@ -780,6 +818,34 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
       b.classList.add('ok'); b.innerHTML=CHECK;
       setTimeout(()=>{ b.classList.remove('ok'); b.innerHTML=orig; }, 1500);
     });
+  });
+
+  // Email collector → Supabase (project nrvfkcafgzzelxonmgzl, table loop_subscribers).
+  // The publishable key is PUBLIC by design (like every Supabase web client); the table
+  // has insert-only RLS, so this key can add an email but cannot read the list back.
+  const SB_URL='https://nrvfkcafgzzelxonmgzl.supabase.co';
+  const SB_PUBLISHABLE='sb_publishable_BWwC8KG-gQwmlRgxq-NY9w_nX_OIxoi';
+  const subForm=document.getElementById('subForm'), subEmail=document.getElementById('subEmail'),
+        subBtn=document.getElementById('subBtn'), subMsg=document.getElementById('subMsg');
+  const showMsg=(t,ok)=>{ subMsg.textContent=t; subMsg.className='sub-msg '+(ok?'ok':'err'); };
+  if(subForm) subForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const email=(subEmail.value||'').trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)){ showMsg('Please enter a valid email.',false); subEmail.focus(); return; }
+    subBtn.disabled=true; const orig=subBtn.textContent; subBtn.textContent='…'; subMsg.textContent='';
+    try{
+      const r=await fetch(SB_URL+'/rest/v1/loop_subscribers',{
+        method:'POST',
+        headers:{ apikey:SB_PUBLISHABLE, Authorization:'Bearer '+SB_PUBLISHABLE,
+                  'Content-Type':'application/json', Prefer:'return=minimal' },
+        body:JSON.stringify({ email, source:'loop-browser-site' })
+      });
+      if(r.status===201){ showMsg("You're on the list — watch your inbox. ✓",true); subForm.reset(); }
+      else if(r.status===409){ showMsg("You're already subscribed. ✓",true); subForm.reset(); }
+      else if(r.status===400){ showMsg('Please enter a valid email.',false); }
+      else { showMsg('Something went wrong — please try again.',false); }
+    }catch(_){ showMsg('Network error — please try again.',false); }
+    subBtn.disabled=false; subBtn.textContent=orig;
   });
 </script>
 </body>
