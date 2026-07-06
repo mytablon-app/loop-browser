@@ -3,21 +3,21 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Loop Browser — command the web from your CLI</title>
-<meta name="description" content="A glass desktop browser you command from the CLI. Reads the page, finds elements, acts. Frequent tasks become recipes that replay deterministically — no LLM in the hot path. Local-first, private." />
+<title>Loop Browser: command the web from your CLI</title>
+<meta name="description" content="A glass desktop browser you command from the CLI. Reads the page, finds elements, acts. Frequent tasks become recipes that replay deterministically, with no LLM in the hot path. Local-first, private." />
 <link rel="icon" href="loop-icon.svg" type="image/svg+xml" />
 <!-- Social share (Open Graph + Twitter). Set og:url + the og.png to the deployed URL at launch. -->
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://loop-browser.com/" />
-<meta property="og:title" content="Loop Browser — an AI browser that runs without AI" />
-<meta property="og:description" content="Written once with AI; replayed forever without it. AI use falls to zero as a task repeats — local, deterministic, ~$0 per run." />
+<meta property="og:title" content="Loop Browser: an AI browser that runs without AI" />
+<meta property="og:description" content="Written once with AI; replayed forever without it. AI use falls to zero as a task repeats: local, deterministic, ~$0 per run." />
 <meta property="og:image" content="https://loop-browser.com/og.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content="Chart: AI in the loop falls to zero as a task repeats — 100% on the first run when the LLM writes the recipe, near zero on replays, brief heal spikes that get cheaper over time." />
+<meta property="og:image:alt" content="Chart: AI in the loop falls to zero as a task repeats: 100% on the first run when the LLM writes the recipe, near zero on replays, brief heal spikes that get cheaper over time." />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Loop Browser — an AI browser that runs without AI" />
-<meta name="twitter:description" content="Written once with AI; replayed forever without it. AI use falls to zero as a task repeats — local, deterministic, ~$0 per run." />
+<meta name="twitter:title" content="Loop Browser: an AI browser that runs without AI" />
+<meta name="twitter:description" content="Written once with AI; replayed forever without it. AI use falls to zero as a task repeats: local, deterministic, ~$0 per run." />
 <meta name="twitter:image" content="https://loop-browser.com/og.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -175,7 +175,7 @@ h2{font-family:var(--display);font-weight:700;letter-spacing:-.03em;font-size:cl
   background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .chapter .mean{color:var(--muted);font-size:1rem;border-left:2px solid var(--border-strong);padding-left:16px;max-width:520px}
 .chapter .mean b{color:var(--text);font-weight:600}
-/* scroll reveal — only when JS adds .anim, so no-JS shows everything */
+/* scroll reveal - only when JS adds .anim, so no-JS shows everything */
 body.anim .chapter{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
 body.anim .chapter.in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){body.anim .chapter{opacity:1;transform:none}}
@@ -258,7 +258,7 @@ html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 92%,transpar
 .get-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:34px;text-align:left}
 @media(max-width:720px){.get-grid{grid-template-columns:1fr}}
 /* min-width:0 at every link: a nowrap descendant (the git-clone command) otherwise
-   forces its full unwrapped width up through EACH flex/grid ancestor in turn — grid
+   forces its full unwrapped width up through EACH flex/grid ancestor in turn - grid
    and flex items default to min-width:auto (= "don't shrink below my content"), so
    without an explicit override at every level the card blows past the viewport on
    mobile instead of the command scrolling inside its own pill. */
@@ -273,7 +273,7 @@ html[data-theme="light"] .term{background:color-mix(in srgb,#0b1120 92%,transpar
 .cmd{display:inline-flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--border-strong);border-radius:12px;padding:9px 9px 9px 16px}
 /* code gets its OWN scroll lane; the pill itself never scrolls (clips at its rounded
    border) and the copy button lives outside that lane, so it can never be bled over by
-   the nowrap text — a squeezed flex item still renders its overflow:visible text past
+   the nowrap text - a squeezed flex item still renders its overflow:visible text past
    its own shrunk box otherwise, which is what put the button on top of the text. */
 .cmd-scroll{flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
 .cmd-scroll::-webkit-scrollbar{display:none}
@@ -297,14 +297,14 @@ footer{border-top:1px solid var(--border);padding:40px 0 56px;margin-top:40px}
 @media(max-width:680px){
   /* the brand-left/tagline-right bar only works on one line; wrapped on mobile it
      read as three inconsistently-aligned lines (left, half-pushed, centered below
-     it) — center the whole thing to match the centered .powered-row beneath it. */
+     it) - center the whole thing to match the centered .powered-row beneath it. */
   .foot{justify-content:center;text-align:center}
   .foot .sep{margin-left:0;width:100%}   /* flex items auto-blockify: width:100% forces it onto its own centered line */
 }
 
-/* ============ GLASS UPGRADE — futuristic minimal glass ============
+/* ============ GLASS UPGRADE - futuristic minimal glass ============
    Three moves, in order of importance:
-   1. AURAS — faint light fields behind sections, so backdrop-blur finally
+   1. AURAS - faint light fields behind sections, so backdrop-blur finally
       has something to refract (glass over flat black reads as gray boxes).
    2. One GLASS RECIPE for every panel: gradient fill + blur+saturate +
       inner top highlight. Same material everywhere = the "system" feel.
@@ -430,7 +430,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     <img src="loop-icon.svg" class="hero-logo rv d1" alt="Loop Browser" />
     <h1 class="rv d3">Human-free browser,<br>run from your <span class="g">CLI</span>.</h1>
     <p class="rv d3" style="font-size:clamp(1.1rem,2.2vw,1.45rem);font-weight:650;letter-spacing:-.01em;margin:0 auto 14px;max-width:620px">Get rid of <span class="g">boring, repetitive</span> online tasks.</p>
-    <p class="lede rv d4">Turn them into <strong>loops</strong> — written once with AI, replayed forever <strong class="g">without it</strong>.</p>
+    <p class="lede rv d4">Turn them into <strong>loops</strong>. Written once with AI, replayed forever <strong class="g">without it</strong>.</p>
     <div class="cta rv d5">
       <a href="#download" class="btn btn-primary">Get Loop ↓<span class="btn-beta">beta</span></a>
       <a href="https://chat.whatsapp.com/G6DPynZAaViALcQqAdtUAB" target="_blank" rel="noopener" class="btn btn-ghost">
@@ -447,7 +447,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     .cost{padding:64px 0 26px}
     .cost .head{text-align:center;max-width:720px;margin:0 auto 30px}
     .cost h2{font-family:var(--display);font-weight:800;font-size:clamp(1.7rem,3.8vw,2.6rem);letter-spacing:-.02em;margin-bottom:12px}
-    .ai-gold{color:var(--ai)}   /* same token as the chart's amber line — text and graph match exactly */
+    .ai-gold{color:var(--ai)}   /* same token as the chart's amber line - text and graph match exactly */
     .cost .sub{color:var(--muted);font-size:clamp(1rem,1.6vw,1.14rem)}
     .cost-fig{margin:0;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:20px 18px 12px;box-shadow:var(--shadow)}
     .cost-fig svg{width:100%;height:auto;display:block;overflow:visible}
@@ -528,8 +528,8 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 <section>
   <div class="wrap">
     <div class="term rv d2">
-      <div class="term-bar"><i></i><i></i><i></i><span>loop — zsh</span></div>
-<pre><span class="o"># teach it once, then replay like a bot — no LLM, ~$0 per run</span>
+      <div class="term-bar"><i></i><i></i><i></i><span>loop · zsh</span></div>
+<pre><span class="o"># teach it once, then replay like a bot, no LLM, ~$0 per run</span>
 <span class="p">$</span> <span class="c">loop</span> <span class="a">run post-to-linkedin</span> text=<span class="a">"We just shipped 🚀"</span>
   · open linkedin.com/feed · compose · click "Post"  → <span class="ok">✓ posted</span>
 
@@ -552,7 +552,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     .howx-step code{font-family:var(--mono);font-size:.85em;color:var(--text);background:var(--panel-2);padding:1px 6px;border-radius:6px}
     .howx-arrow{display:flex;align-items:center;color:var(--faint);font-size:1.5rem}
     @media(max-width:760px){.howx-arrow{transform:rotate(90deg);justify-content:center}}
-    /* the start strip — onboarding folded into How-it-works (was its own near-duplicate section) */
+    /* the start strip - onboarding folded into How-it-works (was its own near-duplicate section) */
     .howx-start{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;max-width:960px;
       margin:26px auto 0;padding:15px 26px;border-radius:999px;border:1px solid var(--glass-border);
       background:var(--glass);
@@ -569,16 +569,16 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
       <h2>Author once. Replay forever.</h2>
     </div>
     <div class="howx-flow">
-      <div class="howx-step"><div class="k">01 · Author</div><h3>Teach it once</h3><p>Tell the LLM a task; it writes a <b>recipe</b> — fixed steps that target elements by name.</p></div>
+      <div class="howx-step"><div class="k">01 · Author</div><h3>Teach it once</h3><p>Tell the LLM a task; it writes a <b>recipe</b>: fixed steps that target elements by name.</p></div>
       <div class="howx-arrow">&#8594;</div>
       <div class="howx-step"><div class="k">02 · Replay</div><h3>Run it forever</h3><p><code>loop run</code> replays it deterministically. No LLM, ~$0 a run.</p></div>
       <div class="howx-arrow">&#8594;</div>
-      <div class="howx-step"><div class="k">03 · Heal</div><h3>Fix on change</h3><p>If the page changes, the LLM re-teaches that one step — then it's free again.</p></div>
+      <div class="howx-step"><div class="k">03 · Heal</div><h3>Fix on change</h3><p>If the page changes, the LLM re-teaches that one step, then it's free again.</p></div>
     </div>
     <div class="howx-start">
-      <span><b>1</b> Clone it — <a href="#download">get Loop from GitHub</a></span><i></i>
-      <span><b>2</b> Bring a brain — any LLM</span><i></i>
-      <span><b>3</b> Cook — <code>loop run</code>, watch every step</span>
+      <span><b>1</b> Clone it: <a href="#download">get Loop from GitHub</a></span><i></i>
+      <span><b>2</b> Bring a brain: any LLM</span><i></i>
+      <span><b>3</b> Cook: <code>loop run</code>, watch every step</span>
     </div>
   </div>
 </section>
@@ -593,27 +593,27 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     <div class="story">
       <div class="chapter">
         <div class="num">Chapter one · The dream</div>
-        <p class="tale"><span class="cap">O</span>nce, an entrepreneur named <b>Tom</b> did it all himself — host, cook, dishwasher — dreaming of a kitchen that didn't need him hovering over every pan.</p>
-        <p class="mean"><b>You</b> — buried in the busywork only you know how to do, while the real work waits.</p>
+        <p class="tale"><span class="cap">O</span>nce, an entrepreneur named <b>Tom</b> did it all himself (host, cook, dishwasher), dreaming of a kitchen that didn't need him hovering over every pan.</p>
+        <p class="mean"><b>You</b>, buried in the busywork only you know how to do, while the real work waits.</p>
       </div>
       <div class="chapter">
         <div class="num">Chapter two · The kitchen</div>
-        <p class="tale">So he hired a <b>head chef</b> who could cook anything Tom described — no recipe too strange, no order too last-minute.</p>
-        <p class="mean">The kitchen is <b>Loop Browser</b>; the head chef is the <b>CLI</b> you command — with an <b>LLM</b> for a brain.</p>
+        <p class="tale">So he hired a <b>head chef</b> who could cook anything Tom described: no recipe too strange, no order too last-minute.</p>
+        <p class="mean">The kitchen is <b>Loop Browser</b>; the head chef is the <b>CLI</b> you command, with an <b>LLM</b> for a brain.</p>
       </div>
       <div class="chapter">
         <div class="num">Chapter three · The recipes</div>
-        <p class="tale">Tom whispered his <b>secret recipes</b> once — never twice. The <b>pantry</b> restocked itself, fresh, every single cook.</p>
-        <p class="mean">Recipes are your saved <b>commands</b>; ingredients are your <b>data</b> — both stay yours, always.</p>
+        <p class="tale">Tom whispered his <b>secret recipes</b> once, never twice. The <b>pantry</b> restocked itself, fresh, every single cook.</p>
+        <p class="mean">Recipes are your saved <b>commands</b>; ingredients are your <b>data</b>, both stay yours, always.</p>
       </div>
       <div class="chapter">
         <div class="num">Chapter four · The cooking</div>
         <p class="tale">The first plate was <b>flawless</b>. So was the hundredth. So was the thousandth. Tom just… watched.</p>
-        <p class="mean">Automation you can <b>watch</b> — deterministic, repeatable, no guesswork.</p>
+        <p class="mean">Automation you can <b>watch</b>: deterministic, repeatable, no guesswork.</p>
       </div>
       <div class="chapter">
         <div class="num">Chapter five · The success</div>
-        <p class="tale">Word spread. Lines formed down the block. Today <b>a hundred line cooks</b> run that kitchen, day and night — while Tom does <b>nothing</b>.</p>
+        <p class="tale">Word spread. Lines formed down the block. Today <b>a hundred line cooks</b> run that kitchen, day and night, while Tom does <b>nothing</b>.</p>
         <p class="mean"><b>Chef bots</b> replay your recipes at scale. You own the menu; the kitchen does the work.</p>
       </div>
     </div>
@@ -633,7 +633,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     <div class="menu">
       <div class="dish">
         <div class="dish-top"><span class="dish-name">Post to LinkedIn</span><span class="dish-lead"></span><span class="dish-garnish">scheduled</span></div>
-        <p>Draft, schedule, and publish — on autopilot.</p>
+        <p>Draft, schedule, and publish on autopilot.</p>
       </div>
       <div class="dish">
         <div class="dish-top"><span class="dish-name">Run your WhatsApp</span><span class="dish-lead"></span><span class="dish-garnish">hands-off</span></div>
@@ -661,8 +661,8 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     <div>
       <div class="eyebrow">You hold the key</div>
       <h2>Your real accounts, automated.</h2>
-      <p class="sub" style="margin-bottom:22px">LinkedIn, WhatsApp, your CRM — behind a login cloud agents can't reach. You log in once; it runs <em>inside</em> your session while you watch.</p>
-      <p class="sub">Nothing private leaves your machine — logins, data, results, recipes all stay. Only a recipe's <em>method</em> is shareable, if you choose.</p>
+      <p class="sub" style="margin-bottom:22px">LinkedIn, WhatsApp, your CRM, behind a login cloud agents can't reach. You log in once; it runs <em>inside</em> your session while you watch.</p>
+      <p class="sub">Nothing private leaves your machine: logins, data, results, recipes all stay. Only a recipe's <em>method</em> is shareable, if you choose.</p>
     </div>
     <div class="ledger">
       <div class="row"><span class="ic">📋</span><span class="k">Recipe (the method)</span><span class="ships">SHAREABLE</span></div>
@@ -678,9 +678,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     <div class="eyebrow">Why the dishes are better</div>
     <h2>Quick to cook, delicious to serve.</h2>
     <div class="why" style="text-align:left">
-      <div class="card"><div class="num">12×</div><div><h3>Reads code, not pixels</h3><p>Acts on the accessibility tree — ~12× cheaper than vision, far more reliable.</p></div></div>
+      <div class="card"><div class="num">12×</div><div><h3>Reads code, not pixels</h3><p>Acts on the accessibility tree, ~12× cheaper than vision, far more reliable.</p></div></div>
       <div class="card"><div class="num">$0</div><div><h3>Deterministic replay</h3><p>No LLM in the loop. Known tasks cost nothing to repeat.</p></div></div>
-      <div class="card"><div class="num">🛡️</div><div><h3>Injection-resistant</h3><p>Replay never feeds page text to an LLM — immune to prompt-injection.</p></div></div>
+      <div class="card"><div class="num">🛡️</div><div><h3>Injection-resistant</h3><p>Replay never feeds page text to an LLM, immune to prompt-injection.</p></div></div>
       <div class="card"><div class="num">🔑</div><div><h3>Works behind your login</h3><p>Runs on your real logged-in accounts, where cloud agents stall. Only you log in.</p></div></div>
     </div>
   </div>
@@ -691,7 +691,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     <div class="download">
       <div class="eyebrow" style="color:var(--cyan)">Ready when you are</div>
       <h2>Get Loop Browser</h2>
-      <p class="sub center" style="margin-top:6px">Loop runs <strong>from the repo</strong> — the only way in is GitHub. Clone it and you're set.</p>
+      <p class="sub center" style="margin-top:6px">Loop runs <strong>from the repo</strong>. The only way in is GitHub. Clone it and you're set.</p>
       <div class="get-grid" style="grid-template-columns:1fr;max-width:720px;margin-inline:auto">
 
         <div class="get-card">
@@ -702,8 +702,8 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
             <span class="cmd-label">Clone</span>
             <div class="cmd"><div class="cmd-scroll"><code>git clone https://github.com/mytablon-app/loop-browser.git</code></div><button class="copy" data-copy="git clone https://github.com/mytablon-app/loop-browser.git" aria-label="Copy" title="Copy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
           </div>
-          <p class="note" style="margin-top:14px">Then finish setup in a few commands — full steps in the <a href="https://github.com/mytablon-app/loop-browser#quick-start" target="_blank" rel="noopener">README</a>. Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> + git.</p>
-          <p class="note">It's a <b>living</b> library — <code>git pull</code> for the latest recipes &amp; fixes, and send your own back.</p>
+          <p class="note" style="margin-top:14px">Then finish setup in a few commands. Full steps in the <a href="https://github.com/mytablon-app/loop-browser#quick-start" target="_blank" rel="noopener">README</a>. Needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> + git.</p>
+          <p class="note">It's a <b>living</b> library: <code>git pull</code> for the latest recipes &amp; fixes, and send your own back.</p>
         </div>
 
       </div>
@@ -737,7 +737,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
     <div class="box">
       <div class="eyebrow" style="color:var(--cyan)">Stay in the loop</div>
       <h2>Know when updates land.</h2>
-      <p class="sub">Loop is in beta and moving fast. Get release notes in your inbox — nothing else.</p>
+      <p class="sub">Loop is in beta and moving fast. Get release notes in your inbox, nothing else.</p>
       <form class="sub-form" id="subForm" novalidate>
         <input type="email" id="subEmail" placeholder="you@example.com" required autocomplete="email" aria-label="Email address" />
         <button type="submit" class="btn btn-primary" id="subBtn">Notify me</button>
@@ -775,7 +775,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
   const root=document.documentElement, themeBtns=document.querySelectorAll('.theme-btn');
   const saved=localStorage.getItem('loop-theme');
   if(saved){root.setAttribute('data-theme',saved);}
-  // Two toggle instances (desktop nav + drawer footer) — keep both in lockstep.
+  // Two toggle instances (desktop nav + drawer footer) - keep both in lockstep.
   const sync=()=>{ const light=root.getAttribute('data-theme')==='light';
     themeBtns.forEach(b=>{ b.textContent=light?'☀️':'🌙'; b.setAttribute('aria-label', light?'Switch to dark mode':'Switch to light mode'); b.setAttribute('aria-pressed', String(light)); }); };
   sync();
@@ -806,9 +806,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
   },{threshold:.3,rootMargin:'0px 0px -8% 0px'});
   document.querySelectorAll('.chapter').forEach(c=>io.observe(c));
 
-  // (Install is git-clone-only now — no OS-aware download / download-counter JS.)
+  // (Install is git-clone-only now - no OS-aware download / download-counter JS.)
 
-  // Copy buttons on command snippets — copy to clipboard + a brief green check
+  // Copy buttons on command snippets - copy to clipboard + a brief green check
   const CHECK='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
   document.querySelectorAll('.cmd .copy').forEach(b=>{
     const orig=b.innerHTML;
@@ -840,11 +840,11 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
                   'Content-Type':'application/json', Prefer:'return=minimal' },
         body:JSON.stringify({ email, source:'loop-browser-site' })
       });
-      if(r.status===201){ showMsg("You're on the list — watch your inbox. ✓",true); subForm.reset(); }
+      if(r.status===201){ showMsg("You're on the list. Watch your inbox. ✓",true); subForm.reset(); }
       else if(r.status===409){ showMsg("You're already subscribed. ✓",true); subForm.reset(); }
       else if(r.status===400){ showMsg('Please enter a valid email.',false); }
-      else { showMsg('Something went wrong — please try again.',false); }
-    }catch(_){ showMsg('Network error — please try again.',false); }
+      else { showMsg('Something went wrong. Please try again.',false); }
+    }catch(_){ showMsg('Network error. Please try again.',false); }
     subBtn.disabled=false; subBtn.textContent=orig;
   });
 </script>
