@@ -1,13 +1,24 @@
 <!-- Loop Browser -->
 <p align="center"><img src="assets/loop-icon.svg" width="96" alt="Loop Browser"></p>
 <h1 align="center">Loop Browser</h1>
-<p align="center">A glass desktop browser you <em>command from the CLI</em> — and watch it happen.</p>
+<p align="center"><strong>Automate any site from your CLI.</strong> Turn repetitive, boring web tasks into loops — written once with AI, replayed forever <em>without it</em>.</p>
 
 ---
 
-Loop Browser is an **Electron** browser (glass UI, tabs, address bar, light/dark) that exposes a CDP port, so a small **CLI** can drive the active tab: read the page's accessibility tree (code, not pixels), find an element, and act — navigate, type, click. Frequent tasks get saved as **recipes** that replay like a bot, with **no LLM in the hot path**.
+Loop Browser is an **Electron** browser (glass UI, tabs, address bar, light/dark) that exposes a CDP port, so a small **CLI** can drive the active tab: read the page's accessibility tree (code, not pixels), find an element, and act — navigate, type, click. Frequent tasks get saved as **recipes** that replay like a bot, with **no LLM in the loop** once a flow is recorded.
+
+It runs on **your real, logged-in accounts** — LinkedIn, WhatsApp, your CRM, internal tools — the surfaces cloud agents can't reach because they sit behind a login. You log in once, on your own machine; nothing private ever leaves it.
 
 It's **site-agnostic** — the engine doesn't know or care which website it's driving. WhatsApp is just the first *cuisine*; new ones (LinkedIn, Eventbrite, internal tools…) are added as new recipes, not by changing the engine.
+
+## Why Loop
+
+- **🌐 Any site.** The engine is site-agnostic — if you can do it in a browser, it can be recorded as a recipe. New sites are new recipes, not engine changes.
+- **🔑 Behind your login too.** Reaches the real accounts cloud agents stall on — LinkedIn, WhatsApp, your CRM — because only *you* log in, on your own machine.
+- **💸 Free on repeat.** AI shows up only to *author* or *heal* a recipe. A recorded flow replays with no LLM in the loop, so a known task costs ~$0 to run again — and reads the accessibility tree, ~12× cheaper and more reliable than vision when AI *is* needed.
+- **🔧 Self-heals on change.** When a page shifts and a step breaks, the LLM re-teaches that one step, captures the fix, and it's free again — no rebuild.
+- **🛡️ Local & injection-proof.** Logins, data, results, and recipes all stay on your machine. Replay never feeds page text to an LLM, so a recorded flow can't be prompt-injected.
+- **👁️ Watchable.** It's a visible window, not a headless bot — you see every click as it happens, and it paces like a human.
 
 ## The kitchen model
 
