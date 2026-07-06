@@ -65,8 +65,15 @@ function layout() {
   if (!win) return;
   const [w, h] = win.getContentSize();
   toolbar.setBounds({ x: 0, y: 0, width: w, height: TOOLBAR_H });
-  const a = active();
-  if (a) a.view.setBounds({ x: 0, y: TOOLBAR_H, width: w, height: Math.max(0, h - TOOLBAR_H) });
+  // Offset EVERY tab view under the toolbar — not just the active one — so a view
+  // that ever gets shown can't sit at y=0 and bleed its header through the glass.
+  const rect = { x: 0, y: TOOLBAR_H, width: w, height: Math.max(0, h - TOOLBAR_H) };
+  for (const t of tabs) {
+    try {
+      const wc = t.view && t.view.webContents;
+      if (wc && !wc.isDestroyed()) t.view.setBounds(rect);
+    } catch (_) {}
+  }
 }
 
 function sendTabs() {
