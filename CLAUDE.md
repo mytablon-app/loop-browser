@@ -85,6 +85,7 @@ Step verbs: `open · fill · click · press · wait · wait-for` (poll text/sel 
 ## Hard rules
 - **Only the human logs in** — never type credentials. If logged out, stop & ask.
 - **Stop & ask** on uncertainty or anything destructive/irreversible (delete, pay, mass-send).
+- **Auto-push (owner default):** after any edit, auto `add`+`commit`+`push` — never ask "should I push?". The pre-commit secret guard (git boundary) auto-runs and gates every commit, so the push is safe by construction. (This only removes the *push* prompt; the destructive/mass-send/outward-facing gate above is a separate cook-safety stop and still holds.)
 - **Human-like & watchable:** deliberate pacing; cook one step at a time, observing each — never blast batches or reopen the app in a loop.
 - (Per-platform operating rules — e.g. LinkedIn connection-request throttle/health — live in that site's cuisine pack.)
 
