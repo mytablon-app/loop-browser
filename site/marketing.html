@@ -20,6 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@29.1.2/dist/css/intlTelInput.css" />
 <style>
 :root{
   --ink:#070b14; --ink2:#0b1120;
@@ -87,6 +88,13 @@ h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;c
   border:1px solid var(--border-strong);border-radius:12px;padding:14px 16px;outline:none;transition:border-color .2s,box-shadow .2s}
 .field input::placeholder{color:var(--faint)}
 .field input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,211,238,.14)}
+/* WhatsApp country picker (intl-tel-input) — dark theme */
+:root{--iti-country-selector-bg:#0f1728;--iti-border-color:var(--border-strong);--iti-hover-color:rgba(255,255,255,.08);--iti-icon-color:var(--muted)}
+.field .iti{width:100%}
+.iti__country-selector,.iti__country-list{color:var(--text)}
+.iti__search-input{background:var(--ink2);color:var(--text)}
+.iti__search-input::placeholder{color:var(--faint)}
+.iti__selected-dial-code{color:var(--text)}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .submit{width:100%;margin-top:8px;font-family:var(--body);font-weight:700;font-size:1.05rem;color:#fff;background:var(--grad-deep);
   border:none;border-radius:14px;padding:15px 22px;cursor:pointer;transition:.2s;box-shadow:0 16px 40px -12px var(--glow)}
@@ -142,7 +150,7 @@ h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;c
               <input id="rEmail" name="email" type="email" placeholder="Email" autocomplete="email" aria-label="Email" required />
             </div>
             <div class="field">
-              <input id="rWa" name="whatsapp" type="tel" placeholder="WhatsApp (+971 50 123 4567)" autocomplete="tel" aria-label="WhatsApp number" required />
+              <input id="rWa" name="whatsapp" type="tel" placeholder="WhatsApp number" autocomplete="tel" aria-label="WhatsApp number" required />
             </div>
             <div class="field">
               <input id="rWeb" name="website" type="url" inputmode="url" placeholder="Website (yourcompany.com)" autocomplete="url" aria-label="Website" required />
@@ -171,6 +179,7 @@ h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;c
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@29.1.2/dist/js/intlTelInputWithUtils.min.js"></script>
 <script>
   // Marketing lead capture → Supabase Edge Function `register` (public). The function
   // inserts into the locked `registrations` table (service role) and emails the team
@@ -180,20 +189,21 @@ h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;c
   const btn = document.getElementById('regBtn');
   const msg = document.getElementById('regMsg');
   const done = document.getElementById('regDone');
+  const waInput = document.getElementById('rWa');
+  const iti = window.intlTelInput(waInput, { initialCountry: 'ae', separateDialCode: true, countryOrder: ['ae','sa','qa','kw','bh','om','in','pk','gb','us'], strictMode: true });
   const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
   const URL_RE = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/\S*)?$/i;
-  const E164_RE = /^\+[1-9]\d{7,14}$/;
   const showMsg = (t, ok) => { msg.textContent = t; msg.className = 'form-msg ' + (ok ? 'ok' : 'err'); };
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = form.name.value.trim();
     const email = form.email.value.trim();
-    const whatsapp = form.whatsapp.value.replace(/[^\d+]/g, '');
+    const whatsapp = iti.getNumber();
     const website = form.website.value.trim();
     if (!name) { showMsg('Please enter your name.', false); form.name.focus(); return; }
     if (!EMAIL_RE.test(email)) { showMsg('Please enter a valid email.', false); form.email.focus(); return; }
-    if (!E164_RE.test(whatsapp)) { showMsg('Enter WhatsApp in international format, e.g. +971 50 123 4567.', false); form.whatsapp.focus(); return; }
+    if (!iti.isValidNumber()) { showMsg('Please enter a valid WhatsApp number.', false); waInput.focus(); return; }
     if (!URL_RE.test(website)) { showMsg('Please enter a valid website.', false); form.website.focus(); return; }
 
     btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Sending…'; showMsg('', true);
