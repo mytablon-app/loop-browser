@@ -20,6 +20,7 @@ const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const clean = (v: unknown, max = 200) => String(v ?? "").trim().slice(0, max);
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
+const URL_RE = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/\S*)?$/i;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -35,11 +36,14 @@ Deno.serve(async (req: Request) => {
   const name = clean(p.name, 120);
   const email = clean(p.email, 200).toLowerCase();
   const whatsapp = clean(p.whatsapp, 40);
+  let website = clean(p.website, 200);
   const source = clean(p.source, 60) || "loop-marketing";
   const interest = clean(p.interest, 60) || "human-free-marketing";
   if (!name) return json({ error: "Please enter your name." }, 400);
   if (!EMAIL_RE.test(email)) return json({ error: "Please enter a valid email." }, 400);
   if (whatsapp.replace(/\D/g, "").length < 6) return json({ error: "Please enter a valid WhatsApp number." }, 400);
+  if (!URL_RE.test(website)) return json({ error: "Please enter a valid website." }, 400);
+  if (!/^https?:\/\//i.test(website)) website = "https://" + website;
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -47,7 +51,7 @@ Deno.serve(async (req: Request) => {
 
   const user_agent = clean(req.headers.get("user-agent"), 400);
   const { error: dbErr } = await admin.from("registrations").insert({
-    name, email, whatsapp, source, interest, user_agent,
+    name, email, whatsapp, website, source, interest, user_agent,
   });
   if (dbErr) { console.error("insert error:", dbErr); return json({ error: "Could not save your details. Please try again." }, 500); }
 
@@ -63,11 +67,12 @@ Deno.serve(async (req: Request) => {
 <p style="margin:0 0 5px"><b>Name:</b> ${esc(name)}</p>
 <p style="margin:0 0 5px"><b>Email:</b> ${esc(email)}</p>
 <p style="margin:0 0 5px"><b>WhatsApp:</b> ${esc(whatsapp)}</p>
+<p style="margin:0 0 5px"><b>Website:</b> ${esc(website)}</p>
 <p style="margin:0 0 5px"><b>Interest:</b> ${esc(interest)}</p>
 <p style="margin:0 0 5px"><b>Source:</b> ${esc(source)}</p>
 <p style="margin:14px 0 0;color:#5b6880;font-size:13px">${esc(when)}</p>
 </div>`;
-    const text = `New registration — human-free marketing\n\nName: ${name}\nEmail: ${email}\nWhatsApp: ${whatsapp}\nInterest: ${interest}\nSource: ${source}\n${when}`;
+    const text = `New registration — human-free marketing\n\nName: ${name}\nEmail: ${email}\nWhatsApp: ${whatsapp}\nWebsite: ${website}\nInterest: ${interest}\nSource: ${source}\n${when}`;
     try {
       const r = await fetch("https://api.resend.com/emails", {
         method: "POST",
