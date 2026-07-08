@@ -21,6 +21,7 @@ const esc = (s: string) =>
 const clean = (v: unknown, max = 200) => String(v ?? "").trim().slice(0, max);
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 const URL_RE = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/\S*)?$/i;
+const E164_RE = /^\+[1-9]\d{7,14}$/;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -35,13 +36,13 @@ Deno.serve(async (req: Request) => {
 
   const name = clean(p.name, 120);
   const email = clean(p.email, 200).toLowerCase();
-  const whatsapp = clean(p.whatsapp, 40);
+  let whatsapp = clean(p.whatsapp, 40).replace(/[^\d+]/g, "");
   let website = clean(p.website, 200);
   const source = clean(p.source, 60) || "loop-marketing";
   const interest = clean(p.interest, 60) || "human-free-marketing";
   if (!name) return json({ error: "Please enter your name." }, 400);
   if (!EMAIL_RE.test(email)) return json({ error: "Please enter a valid email." }, 400);
-  if (whatsapp.replace(/\D/g, "").length < 6) return json({ error: "Please enter a valid WhatsApp number." }, 400);
+  if (!E164_RE.test(whatsapp)) return json({ error: "Please enter a valid WhatsApp number in international format." }, 400);
   if (!URL_RE.test(website)) return json({ error: "Please enter a valid website." }, 400);
   if (!/^https?:\/\//i.test(website)) website = "https://" + website;
 
@@ -50,8 +51,9 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
 
   const user_agent = clean(req.headers.get("user-agent"), 400);
+  const ip = clean((req.headers.get("x-forwarded-for") || "").split(",")[0], 64) || clean(req.headers.get("x-real-ip"), 64);
   const { error: dbErr } = await admin.from("registrations").insert({
-    name, email, whatsapp, website, source, interest, user_agent,
+    name, email, whatsapp, website, source, interest, user_agent, ip,
   });
   if (dbErr) { console.error("insert error:", dbErr); return json({ error: "Could not save your details. Please try again." }, 500); }
 
@@ -61,7 +63,7 @@ Deno.serve(async (req: Request) => {
   const from = Deno.env.get("REGISTER_FROM");
   const to = Deno.env.get("REGISTER_TO");
   if (RESEND_API_KEY && from && to) {
-    const when = new Date().toISOString();
+    const when = new Date().toLocaleString("en-GB", { timeZone: "Asia/Dubai", dateStyle: "medium", timeStyle: "short" }) + " (Dubai)";
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#0e1a2c">
 <h2 style="margin:0 0 14px">New registration — human-free marketing</h2>
 <p style="margin:0 0 5px"><b>Name:</b> ${esc(name)}</p>
@@ -70,9 +72,10 @@ Deno.serve(async (req: Request) => {
 <p style="margin:0 0 5px"><b>Website:</b> ${esc(website)}</p>
 <p style="margin:0 0 5px"><b>Interest:</b> ${esc(interest)}</p>
 <p style="margin:0 0 5px"><b>Source:</b> ${esc(source)}</p>
+<p style="margin:0 0 5px"><b>IP:</b> ${esc(ip)}</p>
 <p style="margin:14px 0 0;color:#5b6880;font-size:13px">${esc(when)}</p>
 </div>`;
-    const text = `New registration — human-free marketing\n\nName: ${name}\nEmail: ${email}\nWhatsApp: ${whatsapp}\nWebsite: ${website}\nInterest: ${interest}\nSource: ${source}\n${when}`;
+    const text = `New registration — human-free marketing\n\nName: ${name}\nEmail: ${email}\nWhatsApp: ${whatsapp}\nWebsite: ${website}\nInterest: ${interest}\nSource: ${source}\nIP: ${ip}\n${when}`;
     try {
       const r = await fetch("https://api.resend.com/emails", {
         method: "POST",
