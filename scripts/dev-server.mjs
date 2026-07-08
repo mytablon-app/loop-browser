@@ -28,6 +28,7 @@ createServer(async (req, res) => {
   }
   let p = decodeURIComponent(url.pathname);
   if (p === "/") p = "/index.html";
+  else if (!extname(p)) p += ".html";           // clean URLs: /marketing → marketing.html
   const file = normalize(join(ROOT, p));
   if (!file.startsWith(ROOT)) { res.statusCode = 403; return res.end("forbidden"); }
   try {

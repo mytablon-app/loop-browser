@@ -1,0 +1,6 @@
+# Minimal Supabase config so the CLI can deploy the `register` Edge Function to the
+# Tablon project (ref is public — already in site/index.html). No secrets here.
+project_id = "nrvfkcafgzzelxonmgzl"
+
+[functions.register]
+verify_jwt = false
