@@ -47,7 +47,7 @@ Existing packs: `site-memories/linkedin.md`, `site-memories/whatsapp.md`. Bespok
 - `recipes/` — saved recipes (`*.json`). `recipes/local/` = private (gitignored).
 - `bin/launch.mjs` — the `loop-browser` / `npx loop-browser` bin: starts the desktop app in the **background** and returns (terminal/session stays free). `setup` arg installs the skill first.
 - `bin/loop` + `bin/loop.cmd` — packaged-app CLI shim: runs bundled `cli.mjs` via the app's own Electron (`ELECTRON_RUN_AS_NODE`), so no system Node/repo needed. First launch (`maybeInstallCli()`) offers PATH install.
-- `skill/loop/SKILL.md` — Claude Code skill teaching `loop`; `scripts/install-skill.mjs` installs it. · `site/` — landing page. · `scripts/` — dev tooling. · `HOW-IT-WORKS.md` — the kitchen-metaphor explainer.
+- `skill/loop/SKILL.md` — Claude Code skill teaching `loop`; `scripts/install-skill.mjs` installs it. · `site/` — landing (`index.html`) + marketing signup (`marketing.html`); email/WhatsApp collector → `supabase/functions/register/index.ts` (Supabase Edge Fn). · `scripts/` — dev tooling. · `HOW-IT-WORKS.md` — the kitchen-metaphor explainer.
 
 ## Engine internals & gotchas (the CLI↔browser marriage)
 The CLI speaks **CDP** to `localhost:9222` via Playwright `connectOverCDP`. Non-obvious wirings — touch carefully:
