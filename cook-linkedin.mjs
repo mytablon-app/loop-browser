@@ -10,7 +10,7 @@ import { recordRun } from "./stats.mjs";
 // Graduation ledger version for this DRIVER (recipes carry their own `version`;
 // a bespoke driver is its own method). Bump when the METHOD changes — that resets
 // the clean-run probation, exactly like editing a recipe.
-const DRIVER_VERSION = "1.0.0";
+const DRIVER_VERSION = "1.1.0";
 import { execSync } from "child_process";
 import { writeFileSync } from "fs";
 
@@ -266,7 +266,16 @@ async function cookOne(page, t) {
     await sleep(1800);
   }
   if (!await postBtn.isVisible({ timeout: 3000 }).catch(() => false)) throw new Error("caption stage not reached");
-  await runStep(page, { do: "fill", target: "Text editor for creating content", value: t.caption });
+  // Fill the caption SCOPED to the composer dialog. The page-wide label "Text editor
+  // for creating content" is NOT unique — every feed post below carries a comment box
+  // with the identical label, so getByLabel(...).first() grabs a feed comment box and
+  // the fill times out (broke 2026-07-17 once the feed loaded more posts). Scope to the
+  // dialog that owns the "Post" button; the composer caption is its editable textbox
+  // (placeholder "What do you want to talk about?"). No LLM — deterministic heal.
+  const composer = page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Post", exact: true }) }).first();
+  const captionBox = composer.locator('div.ql-editor[role="textbox"], [role="textbox"][aria-placeholder*="talk about" i]').first();
+  await captionBox.click({ timeout: 5000 });
+  await captionBox.pressSequentially(t.caption, { delay: 6 });
   await sleep(1500);
   // GUARD before the irreversible Post: make sure a human/auto-process hasn't taken
   // over (navigated away, switched tabs, closed our tab). If so, abort — don't click.
@@ -297,7 +306,13 @@ let posted = 0, consec = 0;
 const attempted = new Set();
 while (posted < MAX) {
   // Dedup on BOTH slug (historical entries) and file (always present — survives null slugs).
-  const done = new Set([...servedSet(DISH, "slug"), ...servedSet(DISH, "file"), ...attempted]);
+  // LOOP_LI_FORCE=1 → owner-requested repost: skip the Service Log dedup so an
+  // already-served ticket can go out again (only `attempted` still guards this run).
+  // Off by default; normal drains are unchanged. Pair with a one-item pantry.
+  const FORCE = process.env.LOOP_LI_FORCE === "1";
+  const done = FORCE
+    ? new Set([...attempted])
+    : new Set([...servedSet(DISH, "slug"), ...servedSet(DISH, "file"), ...attempted]);
   const t = pickNextTicket(PANTRY, done);
   if (!t) { console.log("\n✓ PANTRY DRAINED"); break; }
   attempted.add(t.file);              // file is always present; slug is null for company URLs
