@@ -10,7 +10,7 @@ import { recordRun } from "./stats.mjs";
 // Graduation ledger version for this DRIVER (recipes carry their own `version`;
 // a bespoke driver is its own method). Bump when the METHOD changes — that resets
 // the clean-run probation, exactly like editing a recipe.
-const DRIVER_VERSION = "1.1.0";
+const DRIVER_VERSION = "1.2.0";
 import { execSync } from "child_process";
 import { writeFileSync } from "fs";
 
@@ -20,8 +20,17 @@ const DISH = "linkedin-company-post";
 const PANTRY = process.env.LOOP_PANTRY || "./pantry";
 const COMPANY_ID = process.env.LOOP_LI_COMPANY_ID || "<companyId>";
 const COMPANY_URL = `https://www.linkedin.com/company/${COMPANY_ID}/admin/page-posts/published/`;
+// Verify against the PUBLIC feed, never the admin published list — the admin
+// page-posts/published VIEW is known to LAG (shows a stale "newest" and hides a
+// just-cooked post), which would false-negative the recovery guard and cause a
+// double-post. The public feed is the source of truth for "did it actually land".
+const COMPANY_FEED_URL = `https://www.linkedin.com/company/${COMPANY_ID}/posts/?feedView=all`;
 const MAX = parseInt(process.argv[2] || "99", 10);
 const MAX_CONSEC_FAILS = 2;
+// End-of-run recovery pass: after the pantry drains, retry this-run's failures ONCE,
+// after a backoff — but ONLY after verifying on the public feed that the post didn't
+// actually land (the known false-negative double-post guard). Off with LOOP_LI_NO_RECOVERY=1.
+const RECOVERY = process.env.LOOP_LI_NO_RECOVERY !== "1";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Interruption guard — the human (or an auto-process) is ALWAYS priority and we
@@ -217,6 +226,31 @@ async function tidy(page) {
   }
 }
 
+// Is this person's welcome post ALREADY live on the public company feed? This is the
+// guard that makes the recovery-pass retry safe: a "failed" ticket may be a FALSE
+// NEGATIVE (the post landed but the "Post successful" confirm timed out) — reposting
+// it blind would duplicate. Returns true (found → don't repost), false (confidently
+// absent → safe to repost), or null (couldn't verify → do NOT repost, leave for human).
+// Leans conservative on purpose: a wrong "true"/"null" only costs a recoverable miss;
+// a wrong "false" costs a duplicate. Verifies on the PUBLIC feed (admin list lags).
+async function alreadyLive(page, realName) {
+  try {
+    await runStep(page, { do: "open", url: COMPANY_FEED_URL });
+    await sleep(9000);
+    const body = await page.evaluate(() => document.body.innerText || "").catch(() => "");
+    if (!body || !/welcome/i.test(body)) return null;   // feed didn't render → can't verify
+    const toks = (realName || "").toLowerCase().split(/\s+/).filter((w) => w.length >= 3);
+    if (!toks.length) return null;                        // name too thin to match safely
+    const lines = body.split(/\n+/).filter((l) => /welcome/i.test(l) && /joining/i.test(l));
+    for (const l of lines) {
+      const ll = l.toLowerCase();
+      const hit = toks.filter((w) => ll.includes(w)).length;
+      if (hit >= Math.max(2, toks.length - 1)) return true;   // name present in a welcome line
+    }
+    return false;
+  } catch { return null; }
+}
+
 async function cookOne(page, t) {
   const startPage = page; // pin our tab; if it changes mid-cook, that's a takeover
   await guard(page, startPage);
@@ -302,8 +336,9 @@ async function cookOne(page, t) {
 }
 
 const b = await connect();
-let posted = 0, consec = 0;
+let posted = 0, consec = 0, interrupted = false;
 const attempted = new Set();
+const failedThisRun = [];   // tickets that failed this run → end-of-run recovery pass
 while (posted < MAX) {
   // Dedup on BOTH slug (historical entries) and file (always present — survives null slugs).
   // LOOP_LI_FORCE=1 → owner-requested repost: skip the Service Log dedup so an
@@ -340,11 +375,13 @@ while (posted < MAX) {
       console.error(`\n⚠ ${msg}\n  Human/external has the wheel — stopping the batch (human is priority). ${posted} posted before this.`);
       recordDish(DISH, { target: t.name, slug: t.slug, file: t.file, status: "interrupted", note: e.message });
       try { writeFileSync("runs/cook-interrupted.flag", msg + `\n  posted-this-run: ${posted}\n`); } catch {}
+      interrupted = true;
       break;
     }
     consec++;
     console.error(`✗ FAIL: ${t.name} — ${e.message.slice(0, 140)}`);
     recordDish(DISH, { target: t.name, slug: t.slug, file: t.file, status: "failed", error: e.message.slice(0, 140) });
+    failedThisRun.push(t);   // queue for the end-of-run verified recovery pass
     // Capture the stuck state, then just tidy the composer — stay on the posts page (no /feed/ bounce).
     escapeNativePicker(); // a failed upload may have stranded a CDP-invisible native picker — clear it first
     try { ({ page } = await activePage(b)); await page.screenshot({ path: `runs/scratch/cook-fail-${t.slug || posted}.png` }).catch(() => {}); await tidy(page); } catch {}
@@ -352,5 +389,57 @@ while (posted < MAX) {
     await sleep(10000);
   }
 }
+// ---- End-of-run recovery pass ---------------------------------------------------
+// Retry this run's failures ONCE, after a backoff, but never blind: verify on the
+// public feed first (false-negative double-post guard). Skipped if a human took over
+// (respect the wheel) or disabled via LOOP_LI_NO_RECOVERY=1.
+if (RECOVERY && !interrupted && failedThisRun.length) {
+  // De-dup the queue + drop anything a later main-loop attempt already served.
+  const servedFiles = servedSet(DISH, "file"), servedSlugs = servedSet(DISH, "slug");
+  const seen = new Set();
+  const queue = failedThisRun.filter((t) => {
+    if (seen.has(t.file)) return false; seen.add(t.file);
+    return !(servedFiles.has(t.file) || (t.slug && servedSlugs.has(t.slug)));
+  });
+  if (queue.length) {
+    const backoff = 60000 + Math.floor(Math.random() * 30000);   // 60–90s so the SPA/feed settle
+    console.log(`\n↻ RECOVERY PASS — ${queue.length} failed this run; backing off ${Math.round(backoff / 1000)}s, then verified retry`);
+    await sleep(backoff);
+    for (const t of queue) {
+      let page;
+      try {
+        ({ page } = await activePage(b));
+        const live = await alreadyLive(page, t.name);
+        if (live === true) {
+          console.log(`  ✓ ${t.name} — already on the feed (false-negative); recording served, NOT reposting`);
+          recordDish(DISH, { target: t.name, slug: t.slug, file: t.file, status: "served", tagged: false, note: "recovery: verified already-live (false-negative)" });
+          continue;
+        }
+        if (live === null) {
+          console.log(`  ⚠ ${t.name} — could not verify the feed; leaving as failed for manual/next run (NOT reposting)`);
+          continue;
+        }
+        console.log(`  ↻ retry ${t.name} (verified absent from feed)`);
+        ({ page } = await activePage(b));
+        page.__loopHealed = true;                       // a recovery is a heal, never a clean run
+        const { ok, tagged } = await cookOne(page, t);
+        if (ok) {
+          recordDish(DISH, { target: t.name, slug: t.slug, file: t.file, status: "served", tagged, note: "recovered by end-of-run recovery pass" });
+          recordRun(DISH, DRIVER_VERSION, { clean: false });
+          posted++;
+          console.log(`  ✓ RECOVERED: ${t.name}${tagged ? " (tagged)" : " (photo-only)"}  [now ${posted} this run]`);
+          await sleep(25000 + Math.random() * 20000);   // human pace after a recovered post
+        } else {
+          console.log(`  ✗ retry still failed: ${t.name} — left as failed for next run`);
+        }
+      } catch (e) {
+        if (e.name === "Interrupt") { console.error(`  ⚠ recovery interrupted at ${t.name} — human has the wheel, stopping`); break; }
+        console.error(`  ✗ recovery error ${t.name}: ${e.message.slice(0, 90)}`);
+        try { ({ page } = await activePage(b)); await tidy(page); } catch {}
+      }
+    }
+  }
+}
+
 console.log(`\nDONE — published ${posted} this run.`);
 await b.close();
