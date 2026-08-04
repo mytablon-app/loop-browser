@@ -136,6 +136,14 @@ function allowTabOpen() {
   return true;
 }
 
+// LOOP_MUTE_AUDIO=1 → mute EVERY tab's audio at the browser (webContents) level. For a
+// background instance (e.g. the WhatsApp gatekeep box that runs 24/7 and nobody listens
+// to), this is the only reliable silence: a site's in-page "ding" (WhatsApp Web plays its
+// message sound via the page's own audio, ignoring every notification setting) comes out
+// of the tab's audio, below any OS/notification toggle. setAudioMuted covers HTML + Web
+// Audio and persists across in-tab navigations/reloads.
+const MUTE_AUDIO = process.env.LOOP_MUTE_AUDIO === "1";
+
 function newTab(url) {
   const view = new WebContentsView({
     // content-preload bridges window.confirm/alert/prompt to the main process
@@ -151,6 +159,7 @@ function newTab(url) {
   tabs.push({ id, view });
   win.contentView.addChildView(view);
   const wc = view.webContents;
+  if (MUTE_AUDIO) wc.setAudioMuted(true);   // silence background instances (persists across reloads)
   url ? wc.loadURL(url) : wc.loadFile(HOME, { query: { theme } }); // new tab inherits theme
   // Keep the base background matched to what's loading: white for web pages,
   // theme color for our own home tab (so it doesn't bleed dark through sites).
