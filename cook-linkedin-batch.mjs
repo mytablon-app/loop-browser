@@ -345,6 +345,11 @@ async function postBatch(page, batchFile, batchNum) {
     await sleep(3000);
   }
 
+  // One more Enter than the per-tag loop leaves: the source pantry file has a blank
+  // line between the intro and "Join Us:" (confirmed live 2026-09-08 — the posted
+  // caption was missing that gap because `rest` starts AT "Join Us:", not before it).
+  await page.keyboard.press("Enter");
+  await sleep(300);
   const restOk = await verifiedInsertText(page, captionBox, batch.rest, "Join Us:");
   if (!restOk) throw new Error("closing text (Join Us etc.) failed to land after 3 attempts — aborting this batch, nothing posted");
 
