@@ -161,6 +161,22 @@ async function ensureDropdownClosed(page) {
   return false;
 }
 
+// The typeahead dropdown can take much longer than a fixed short sleep to populate —
+// confirmed live (owner feedback 2026-09-08) up to ~20s for the list to appear after
+// typing an @query. Poll for candidates instead of a flat sleep: returns as soon as
+// options show up (usually fast), but keeps waiting up to the cap on a slow render
+// instead of concluding "0 candidates" prematurely — which was producing false
+// no-confident-match results.
+async function waitForCandidates(page, { timeout = 20000, pollMs = 500, settleMs = 600 } = {}) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const count = await page.evaluate(() => [...document.querySelectorAll('[role="option"]')].filter((el) => el.offsetParent !== null).length);
+    if (count > 0) { await sleep(settleMs); return true; }
+    await sleep(pollMs);
+  }
+  return false;
+}
+
 // ---------- one @mention: type fresh at the current cursor, match-by-headline-or-skip ----------
 // Confidence bar: exactly ONE candidate whose visible text contains a distinctive
 // slice of the Voyager-fetched reference headline (or, lacking a headline, is the
@@ -200,7 +216,7 @@ async function tagOnePerson(page, tag) {
   const words = searchName.split(/\s+/);
   let query = `@${words[0]}`;
   await page.keyboard.type(query, { delay: 60 });
-  await sleep(2000);
+  await waitForCandidates(page);
 
   let matchIdx = -1, candidates = [];
   for (let extra = 1; extra <= words.length; extra++) {
@@ -221,7 +237,7 @@ async function tagOnePerson(page, tag) {
     const add = ` ${nextWord}`;
     await page.keyboard.type(add, { delay: 60 });
     query += add;
-    await sleep(1800);
+    await waitForCandidates(page);
   }
 
   if (matchIdx === -1) {
