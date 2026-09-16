@@ -65,7 +65,7 @@ export async function fetchProfile(page, profileUrl) {
       const j = await r.json();
       const p = (j?.included || []).find((x) => x.headline !== undefined);
       if (!p) return { error: "no-profile-in-response" };
-      return { name: `${p.firstName || ""} ${p.lastName || ""}`.trim() || null, headline: p.headline || null };
+      return { name: `${p.firstName || ""} ${p.lastName || ""}`.trim() || null, headline: p.headline || null, objectUrn: p.objectUrn || null };
     } catch (e) { return { error: String(e.message || e) }; }
   }, slug);
 }

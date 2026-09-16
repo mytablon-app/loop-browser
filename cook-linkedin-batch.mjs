@@ -272,6 +272,13 @@ async function tagOnePerson(page, tag) {
     return { tagged: false, reason: "ambiguous", candidateCount: candidates.length, fallbackName };
   }
 
+  // Count mentions BEFORE clicking so we can verify the click actually committed a
+  // real one — confirmed live (2026-09-11, Syed Bilal Haider) that a "successful"
+  // click() can silently fail to produce a real a.ql-mention (his name has commas/
+  // parens that may confuse the typeahead's click handling), leaving broken text in
+  // the caption while the console still logged "tagged ✓". Never trust the click
+  // return value alone as proof of tagging.
+  const mentionCountBefore = await page.evaluate(() => document.querySelectorAll('[role="textbox"] a.ql-mention').length);
   const clicked = await page.evaluate((idx) => {
     const opts = [...document.querySelectorAll('[role="option"]')].filter((el) => el.offsetParent !== null);
     if (!opts[idx]) return false;
@@ -279,8 +286,12 @@ async function tagOnePerson(page, tag) {
     return true;
   }, matchIdx);
   await sleep(1500);
-  if (!clicked) return { tagged: false, reason: "click-failed" };
   if (!(await ensureDropdownClosed(page))) console.log(`  [${tag.name}] WARNING: dropdown wouldn't close after tagging`);
+  const mentionCountAfter = await page.evaluate(() => document.querySelectorAll('[role="textbox"] a.ql-mention').length);
+  if (!clicked || mentionCountAfter <= mentionCountBefore) {
+    console.log(`  [${tag.name}] ⚠ click reported success but NO REAL MENTION landed (before=${mentionCountBefore} after=${mentionCountAfter}) — caption text may be broken, needs manual review before posting`);
+    return { tagged: false, reason: "click-no-real-mention" };
+  }
   console.log(`  [${tag.name}] tagged ✓`);
   return { tagged: true };
 }
