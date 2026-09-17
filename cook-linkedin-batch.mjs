@@ -514,9 +514,13 @@ async function postBatch(page, batchFile, batchNum) {
     queueNeedsReviewNotify(`⚠ LinkedIn spotlight — batch ${batchNum}: clicked Post but didn't see the success confirmation. Please check the Tablon Community page directly to see if it actually went live before re-running.`);
     return { status: "needs-review", batchNum, names, taggedNames, unresolvedReasons: ["post-confirmation-timeout"] };
   }
+  // Confirmed live (2026-09-17, batch 7): LinkedIn's "Post successful" toasts can
+  // briefly STACK (a prior batch's toast hasn't expired yet) — .find() grabs the
+  // FIRST matching "View post" link, which can be the stale/previous batch's, not
+  // this one's. Take the LAST match instead (most-recently-appended toast = newest).
   const url = await page.evaluate(() => {
-    const a = [...document.querySelectorAll("a")].find((el) => /view post/i.test(el.textContent || "") && /urn:li:share:/.test(el.href || ""));
-    return a ? a.href : null;
+    const links = [...document.querySelectorAll("a")].filter((el) => /view post/i.test(el.textContent || "") && /urn:li:share:/.test(el.href || ""));
+    return links.length ? links[links.length - 1].href : null;
   });
   console.log(`  ✓ POSTED: ${url || "(url not captured)"}`);
   logBatch(batchNum, batch.tags, taggedNames, url || "(url not captured)");
