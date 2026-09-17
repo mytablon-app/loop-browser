@@ -11,10 +11,27 @@
 // never (see linkedin-posts/INSTRUCTIONS.md).
 import { connect, activePage } from "./lib.mjs";
 import { fetchProfile, slugOf } from "./porter.mjs";
-import { readFileSync, readdirSync, appendFileSync, existsSync } from "fs";
+import { readFileSync, readdirSync, appendFileSync, existsSync, writeFileSync } from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const rand = (min, max) => Math.floor(min + Math.random() * (max - min));
+
+// Auto-post policy (owner decision, 2026-09-17): once every tag on a batch is either
+// (a) a real mention VERIFIED against the correct LinkedIn member ID, or (b) correctly
+// left as plain text (no confident match, or a caught-and-undone mistag), the batch is
+// safe to post immediately — no more waiting for manual review on the common case.
+// Manual review is still required whenever identity can't be confirmed cleanly (a
+// mistag that couldn't be undone, or a caption build error) — those cases leave the
+// draft open exactly as before and queue a WhatsApp notify via the same pending-file
+// mechanism linkedin-verify-notify.mjs / wa-notify-pending.mjs already use.
+const REPO = path.dirname(fileURLToPath(import.meta.url));
+const PENDING_NOTIFY_FILE = path.join(REPO, "runs", "linkedin-daily-notify-message.txt");
+function queueNeedsReviewNotify(text) {
+  console.log(`  queued WA notify (needs manual review): ${text.split("\n")[0]}`);
+  writeFileSync(PENDING_NOTIFY_FILE, text, "utf8");
+}
 
 // insertText's CDP call was observed live to NOT reliably land before subsequent
 // keyboard operations started — the caption's intro line ended up landing near the
@@ -63,13 +80,20 @@ function parseBatchFile(content) {
 }
 
 // ---------- batch-level dedup against posted-log.txt ----------
+// NEVER split the logged people-list on comma — confirmed live (2026-09-17) that a
+// name containing its own comma ("Michael Campion, PhD") shatters into fake extra
+// fragments, breaking the sorted-join match and silently returning false-negative
+// (dedup thinks an already-posted batch is new — would have duplicate-posted it).
+// Instead: match on declared people-count + every target name appearing verbatim as
+// a substring of the raw list text. Can't mis-segment what it never segments.
 function alreadyPosted(names) {
   if (!existsSync(LOG_FILE)) return false;
   const log = readFileSync(LOG_FILE, "utf8");
-  const key = names.map((n) => n.toLowerCase().trim()).sort().join("|");
-  for (const m of log.matchAll(/Batch \d+ \(\d+ people:\s*([^)]+)\)/g)) {
-    const those = m[1].split(",").map((s) => s.toLowerCase().trim()).sort().join("|");
-    if (those === key) return true;
+  const normNames = names.map((n) => n.toLowerCase().trim());
+  for (const m of log.matchAll(/Batch \d+ \((\d+) people:\s*([^)]+)\)/g)) {
+    if (+m[1] !== names.length) continue;
+    const listText = m[2].toLowerCase();
+    if (normNames.every((n) => listText.includes(n))) return true;
   }
   return false;
 }
@@ -186,7 +210,7 @@ async function waitForCandidates(page, { timeout = 20000, pollMs = 500, settleMs
 async function tagOnePerson(page, tag) {
   if (!(await ensureDropdownClosed(page))) console.log(`  [${tag.name}] WARNING: a stray dropdown wouldn't close before this search started`);
   const slug = slugOf(tag.url);
-  let refHeadline = null, refName = null;
+  let refHeadline = null, refName = null, refObjectUrn = null;
   if (slug) {
     // Retry — confirmed live that a Voyager lookup can fail transiently deep into a
     // long session (many prior calls), silently falling back to weaker exact-name-only
@@ -200,6 +224,7 @@ async function tagOnePerson(page, tag) {
     if (prof && !prof.error) {
       if (prof.headline) refHeadline = prof.headline;
       if (prof.name) refName = prof.name;
+      if (prof.objectUrn) refObjectUrn = prof.objectUrn;
     } else console.log(`  [${tag.name}] Voyager lookup: ${prof && prof.error ? prof.error : "no data"} (after retries)`);
   } else {
     console.log(`  [${tag.name}] given URL has no /in/ slug — will match by exact full name only`);
@@ -292,7 +317,57 @@ async function tagOnePerson(page, tag) {
     console.log(`  [${tag.name}] ⚠ click reported success but NO REAL MENTION landed (before=${mentionCountBefore} after=${mentionCountAfter}) — caption text may be broken, needs manual review before posting`);
     return { tagged: false, reason: "click-no-real-mention" };
   }
-  console.log(`  [${tag.name}] tagged ✓`);
+
+  // MISTAG CHECK: confirmed live this week (Rishi Sundara, Diego Correa, James
+  // Carter, Sophia Burrell) that a click on a single-headline-match candidate can
+  // land on a DIFFERENT same-named person — the confidence bar (one headline-slice
+  // match) isn't proof of identity, only proof of a plausible candidate. When we
+  // have the real member ID, verify the mention we just created actually points to
+  // it before trusting it. Auto-undo on mismatch — never leave a wrong-person tag
+  // in a caption that's about to auto-post.
+  if (refObjectUrn) {
+    const actualUrn = await page.evaluate(() => {
+      const mentions = [...document.querySelectorAll('[role="textbox"] a.ql-mention')];
+      const last = mentions[mentions.length - 1];
+      return last ? last.getAttribute("data-object-urn") : null;
+    });
+    if (actualUrn && actualUrn !== refObjectUrn) {
+      console.log(`  [${tag.name}] ⚠ MISTAG CAUGHT: tagged the wrong person (got ${actualUrn}, expected ${refObjectUrn}) — undoing`);
+      const rect = await page.evaluate(() => {
+        const mentions = [...document.querySelectorAll('[role="textbox"] a.ql-mention')];
+        const last = mentions[mentions.length - 1];
+        if (!last) return null;
+        const r = last.getBoundingClientRect();
+        return { right: r.right, top: r.top, bottom: r.bottom, text: last.textContent };
+      });
+      if (rect) {
+        await page.mouse.click(rect.right - 1, (rect.top + rect.bottom) / 2);
+        await sleep(250);
+        const del = await page.evaluate((count) => {
+          const sel = window.getSelection();
+          if (!sel.rangeCount) return { ok: false, reason: "no-selection" };
+          sel.collapseToEnd();
+          for (let i = 0; i < count; i++) sel.modify("extend", "backward", "character");
+          const removedLen = sel.toString().length;
+          if (removedLen !== count) return { ok: false, reason: "length-mismatch", removedLen };
+          sel.getRangeAt(0).deleteContents();
+          return { ok: true };
+        }, rect.text.length);
+        if (del.ok) {
+          await sleep(150);
+          const fallbackName = refName || tag.name;
+          await page.keyboard.insertText(fallbackName);
+          console.log(`  [${tag.name}] mistag undone, left as verified plain text "${fallbackName}"`);
+          return { tagged: false, reason: "mistag-caught-and-undone", fallbackName };
+        }
+        console.log(`  [${tag.name}] ⚠ mistag delete FAILED (${JSON.stringify(del)})`);
+      }
+      console.log(`  [${tag.name}] ⚠ could not cleanly undo the mistag — caption needs MANUAL review before posting`);
+      return { tagged: false, reason: "mistag-undo-failed" };
+    }
+  }
+
+  console.log(`  [${tag.name}] tagged ✓${refObjectUrn ? " (identity verified)" : " (unverified — Voyager had no member ID to check against)"}`);
   return { tagged: true };
 }
 
@@ -362,9 +437,13 @@ async function postBatch(page, batchFile, batchNum) {
   // at the very end, missing its first word) — inserting it last, at a precisely
   // controlled position, can't be disturbed by anything that comes after it.
   const taggedNames = [];
+  const unresolvedReasons = []; // reasons that mean "don't auto-post, needs a human look"
   for (const tag of batch.tags) {
     const r = await tagOnePerson(page, tag);
     if (r.tagged) taggedNames.push(tag.name);
+    else if (r.reason === "mistag-undo-failed" || r.reason === "cleanup-failed" || r.reason === "click-no-real-mention") {
+      unresolvedReasons.push(`${tag.name}: ${r.reason}`);
+    }
     await page.keyboard.press("Enter");
     // Paced deliberately slow — rapid-fire @mention typeahead queries (6 back-to-back
     // in under a minute) were observed live to trip a silent LinkedIn throttle: every
@@ -402,16 +481,60 @@ async function postBatch(page, batchFile, batchNum) {
     throw new Error(`intro landed but NOT at the start of the caption — aborting, needs manual review. Current text starts: "${finalText.slice(0, 60)}"`);
   }
 
-  // STOP HERE. Never auto-click Post — the owner reviews the prepared draft (image,
-  // caption, tags) and clicks Post themselves. This script's job ends at "ready".
-  console.log(`\nBATCH ${batchNum}: READY — ${taggedNames.length}/${batch.tags.length} tagged (${taggedNames.join(", ") || "none"}).`);
   const untagged = names.filter((n) => !taggedNames.includes(n));
+  console.log(`\nBATCH ${batchNum}: READY — ${taggedNames.length}/${batch.tags.length} tagged (${taggedNames.join(", ") || "none"}).`);
   if (untagged.length) console.log(`  still plain text: ${untagged.join(", ")}`);
-  console.log(`  Review the open draft and press Post yourself when ready.`);
-  return { prepared: true, batchNum, names, taggedNames };
+
+  if (unresolvedReasons.length) {
+    // Something couldn't be verified/cleaned up safely — leave the draft open exactly
+    // as before, and notify instead of guessing. This is the ONLY case that still
+    // waits for a human (auto-post policy, owner decision 2026-09-17).
+    console.log(`  ⚠ ${unresolvedReasons.length} issue(s) need manual review before this can post: ${unresolvedReasons.join("; ")}`);
+    queueNeedsReviewNotify([
+      `⚠ LinkedIn spotlight — batch ${batchNum} needs a manual look before posting:`,
+      unresolvedReasons.map((r) => `  • ${r}`).join("\n"),
+      ``,
+      `Everything else is fine (${taggedNames.length}/${batch.tags.length} tagged). Draft is open in Loop Browser.`,
+    ].join("\n"));
+    return { status: "needs-review", batchNum, names, taggedNames, unresolvedReasons };
+  }
+
+  // Every tag is either identity-verified or correctly left plain — safe to post now.
+  console.log(`  All clear — posting now (auto-post policy).`);
+  const composerDlg = page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Post", exact: true }) }).first();
+  const postBtn = composerDlg.getByRole("button", { name: "Post", exact: true });
+  await postBtn.click({ timeout: 10000 });
+  let posted = false;
+  try {
+    await page.waitForFunction(() => /Post successful/i.test(document.body.innerText || ""), { timeout: 30000 });
+    posted = true;
+  } catch { posted = false; }
+  if (!posted) {
+    console.log(`  ⚠ clicked Post but never saw "Post successful" — may have posted anyway, needs manual verification`);
+    queueNeedsReviewNotify(`⚠ LinkedIn spotlight — batch ${batchNum}: clicked Post but didn't see the success confirmation. Please check the Tablon Community page directly to see if it actually went live before re-running.`);
+    return { status: "needs-review", batchNum, names, taggedNames, unresolvedReasons: ["post-confirmation-timeout"] };
+  }
+  const url = await page.evaluate(() => {
+    const a = [...document.querySelectorAll("a")].find((el) => /view post/i.test(el.textContent || "") && /urn:li:share:/.test(el.href || ""));
+    return a ? a.href : null;
+  });
+  console.log(`  ✓ POSTED: ${url || "(url not captured)"}`);
+  logBatch(batchNum, batch.tags, taggedNames, url || "(url not captured)");
+  // Dismiss the "Post successful / Try Premium Page" upsell modal — it blocks the
+  // next batch's "Start a post" click if left up (site-memories/linkedin.md).
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll("button")].find((b) => /^No thanks$/i.test((b.textContent || "").trim()))
+      || [...document.querySelectorAll("button")].find((b) => /dismiss|close/i.test(b.getAttribute("aria-label") || ""));
+    if (btn) btn.click();
+  }).catch(() => {});
+  await sleep(1500);
+  return { status: "posted", batchNum, names, taggedNames, url };
 }
 
-// ---------- main: prepare exactly ONE not-yet-posted batch, then stop ----------
+// ---------- main: work through today's queue, auto-posting each batch that verifies
+// clean. Stops (leaving that draft open) the moment one batch needs a human look —
+// never guesses past an unresolved issue, and never queues more than one review
+// request at a time. ----------
 const files = readdirSync(PANTRY).filter((f) => /^BATCH-\d+-.*\.txt$/.test(f)).sort((a, b) => {
   const na = +(a.match(/^BATCH-(\d+)-/) || [0, 0])[1], nb = +(b.match(/^BATCH-(\d+)-/) || [0, 0])[1];
   return na - nb;
@@ -420,7 +543,7 @@ if (!files.length) { console.log(`no BATCH-*.txt files in ${PANTRY}`); process.e
 
 const browser = await connect({ autostart: false });
 const { page } = await activePage(browser);
-let prepared = false;
+let postedCount = 0, needsReview = false;
 for (const f of files) {
   const batchNum = +(f.match(/^BATCH-(\d+)-/) || [0, 0])[1];
   const content = readFileSync(path.join(PANTRY, f), "utf8");
@@ -431,13 +554,22 @@ for (const f of files) {
   }
   try {
     const r = await postBatch(page, path.join(PANTRY, f), batchNum);
-    if (r && r.prepared) { prepared = true; break; }
+    if (r && r.status === "posted") {
+      postedCount++;
+      // Deliberate human-like pacing between posts — never blast a queue of public
+      // company-page posts back to back (CLAUDE.md hard rule). 60-120s between.
+      const pause = rand(60000, 120000);
+      console.log(`  pacing ${Math.round(pause / 1000)}s before the next batch...`);
+      await sleep(pause);
+      continue;
+    }
+    if (r && r.status === "needs-review") { needsReview = true; break; }
   } catch (e) {
     console.log(`BATCH ${batchNum}: ERROR ${e.message} — trying next batch`);
     await closeAnyStrayComposer(page);
   }
 }
-if (!prepared) console.log("\nNo batch could be prepared (all posted, or all failed).");
-console.log("\nSCRIPT DONE — the draft (if any) is left open in the browser for you to review and post.");
-console.log("Note: this script does NOT log to posted-log.txt anymore — that only happens once YOU confirm the post is live.");
+console.log(`\nSCRIPT DONE — ${postedCount} batch(es) posted automatically this run.`);
+if (needsReview) console.log("One batch needs manual review — its draft is left open, and a WhatsApp notification is queued.");
+else if (postedCount === 0) console.log("Nothing left to post (all batches already posted, or none could be prepared).");
 process.exit(0);
