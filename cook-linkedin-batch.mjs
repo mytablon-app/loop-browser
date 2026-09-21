@@ -201,6 +201,40 @@ async function waitForCandidates(page, { timeout = 20000, pollMs = 500, settleMs
   return false;
 }
 
+// Shared cleanup: delete the raw typed "@query" text still sitting in the editor
+// (via a verified Selection.modify() delete, never blind Backspace keypresses —
+// those were found to be silently swallowed/miscounted by the mention-typeahead's
+// own key handling, confirmed live: left "@Shunyu YaoShunyu Yao") and replace it
+// with plain fallback text. Used both when no candidate confidently matches AND
+// when a click on a confident candidate still failed to produce a real mention —
+// in both cases what's left in the box is just the raw typed query, so the same
+// undo applies.
+async function cleanupToPlainText(page, tag, query, refName) {
+  if (!(await ensureDropdownClosed(page))) console.log(`  [${tag.name}] WARNING: dropdown wouldn't close before cleanup`);
+  const del = await page.evaluate((count) => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return { ok: false, reason: "no-selection" };
+    sel.collapseToEnd();
+    for (let i = 0; i < count; i++) sel.modify("extend", "backward", "character");
+    const removedLen = sel.toString().length;
+    if (removedLen !== count) return { ok: false, reason: "length-mismatch", removedLen };
+    sel.getRangeAt(0).deleteContents();
+    return { ok: true };
+  }, query.length);
+  if (!del.ok) {
+    console.log(`  [${tag.name}] cleanup delete FAILED (${JSON.stringify(del)}) — caption may need manual review`);
+    return { tagged: false, reason: "cleanup-failed" };
+  }
+  await sleep(200);
+  // Prefer the Voyager-verified LinkedIn display name over the batch file's name —
+  // confirmed live (2026-09-07 BATCH-10) that they can differ (signup/app data said
+  // "Annie Byers", her actual LinkedIn name is "Annie B") and the untagged fallback
+  // must still read correctly on the public post.
+  const fallbackName = refName || tag.name;
+  await page.keyboard.insertText(fallbackName);
+  return { tagged: false, reason: "ambiguous", fallbackName };
+}
+
 // ---------- one @mention: type fresh at the current cursor, match-by-headline-or-skip ----------
 // Confidence bar: exactly ONE candidate whose visible text contains a distinctive
 // slice of the Voyager-fetched reference headline (or, lacking a headline, is the
@@ -267,34 +301,7 @@ async function tagOnePerson(page, tag) {
 
   if (matchIdx === -1) {
     console.log(`  [${tag.name}] no confident match (${candidates.length} candidates) — leaving as plain text`);
-    if (!(await ensureDropdownClosed(page))) console.log(`  [${tag.name}] WARNING: dropdown wouldn't close before cleanup`);
-    // Undo exactly what we typed via a verified Selection.modify() delete, not blind
-    // Backspace keypresses — those were found to be silently swallowed/miscounted by
-    // the mention-typeahead's own key handling (confirmed live: left "@Shunyu YaoShunyu
-    // Yao" — the backspaces did nothing and insertText just appended). Selection-based
-    // deletion bypasses the typeahead's keydown interception entirely.
-    const del = await page.evaluate((count) => {
-      const sel = window.getSelection();
-      if (!sel.rangeCount) return { ok: false, reason: "no-selection" };
-      sel.collapseToEnd();
-      for (let i = 0; i < count; i++) sel.modify("extend", "backward", "character");
-      const removedLen = sel.toString().length;
-      if (removedLen !== count) return { ok: false, reason: "length-mismatch", removedLen };
-      sel.getRangeAt(0).deleteContents();
-      return { ok: true };
-    }, query.length);
-    if (!del.ok) {
-      console.log(`  [${tag.name}] cleanup delete FAILED (${JSON.stringify(del)}) — caption may need manual review`);
-      return { tagged: false, reason: "cleanup-failed" };
-    }
-    await sleep(200);
-    // Prefer the Voyager-verified LinkedIn display name over the batch file's name —
-    // confirmed live (2026-09-07 BATCH-10) that they can differ (signup/app data said
-    // "Annie Byers", her actual LinkedIn name is "Annie B") and the untagged fallback
-    // must still read correctly on the public post.
-    const fallbackName = refName || tag.name;
-    await page.keyboard.insertText(fallbackName);
-    return { tagged: false, reason: "ambiguous", candidateCount: candidates.length, fallbackName };
+    return cleanupToPlainText(page, tag, query, refName);
   }
 
   // Count mentions BEFORE clicking so we can verify the click actually committed a
@@ -304,18 +311,40 @@ async function tagOnePerson(page, tag) {
   // the caption while the console still logged "tagged ✓". Never trust the click
   // return value alone as proof of tagging.
   const mentionCountBefore = await page.evaluate(() => document.querySelectorAll('[role="textbox"] a.ql-mention').length);
-  const clicked = await page.evaluate((idx) => {
+  const clickOption = () => page.evaluate((idx) => {
     const opts = [...document.querySelectorAll('[role="option"]')].filter((el) => el.offsetParent !== null);
     if (!opts[idx]) return false;
     opts[idx].click();
     return true;
   }, matchIdx);
+  let clicked = await clickOption();
   await sleep(1500);
-  if (!(await ensureDropdownClosed(page))) console.log(`  [${tag.name}] WARNING: dropdown wouldn't close after tagging`);
-  const mentionCountAfter = await page.evaluate(() => document.querySelectorAll('[role="textbox"] a.ql-mention').length);
+  let mentionCountAfter = await page.evaluate(() => document.querySelectorAll('[role="textbox"] a.ql-mention').length);
   if (!clicked || mentionCountAfter <= mentionCountBefore) {
-    console.log(`  [${tag.name}] ⚠ click reported success but NO REAL MENTION landed (before=${mentionCountBefore} after=${mentionCountAfter}) — caption text may be broken, needs manual review before posting`);
-    return { tagged: false, reason: "click-no-real-mention" };
+    // Retry once before giving up — the dropdown can still be sitting there with
+    // the same candidate list (a slow re-render, not a real rejection), so a fresh
+    // click (re-querying live option elements, not the stale first-pass references)
+    // often lands the second time.
+    console.log(`  [${tag.name}] click didn't land a mention on the first try (before=${mentionCountBefore} after=${mentionCountAfter}) — retrying once`);
+    const stillOpen = await page.evaluate(() => [...document.querySelectorAll('[role="option"]')].filter((el) => el.offsetParent !== null).length > 0);
+    if (stillOpen) {
+      clicked = await clickOption();
+      await sleep(1500);
+      mentionCountAfter = await page.evaluate(() => document.querySelectorAll('[role="textbox"] a.ql-mention').length);
+    }
+  }
+  if (!(await ensureDropdownClosed(page))) console.log(`  [${tag.name}] WARNING: dropdown wouldn't close after tagging`);
+  if (!clicked || mentionCountAfter <= mentionCountBefore) {
+    // Confirmed live (2026-09-11, Syed Bilal Haider) that a "successful" click()
+    // can silently fail to produce a real a.ql-mention — never trust the click
+    // return value alone as proof of tagging. The retry above didn't help either,
+    // so this candidate just won't tag. What's left in the box is only the raw
+    // typed "@query" text (nothing was ever committed) — fall back to plain text
+    // exactly like "no confident match" instead of pausing the whole batch for
+    // manual review (2026-09-21: Alfredo J Salvi hit this and the leftover text
+    // was perfectly clean, so the pause was unnecessary).
+    console.log(`  [${tag.name}] ⚠ click still didn't land a real mention after retry — falling back to plain text`);
+    return cleanupToPlainText(page, tag, query, refName);
   }
 
   // MISTAG CHECK: confirmed live this week (Rishi Sundara, Diego Correa, James
