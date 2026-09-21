@@ -520,10 +520,10 @@ async function postBatch(page, batchFile, batchNum) {
     // waits for a human (auto-post policy, owner decision 2026-09-17).
     console.log(`  ⚠ ${unresolvedReasons.length} issue(s) need manual review before this can post: ${unresolvedReasons.join("; ")}`);
     queueNeedsReviewNotify([
-      `⚠ LinkedIn spotlight — batch ${batchNum} needs a manual look before posting:`,
+      `⚠ LinkedIn spotlight — batch ${batchNum} needs a manual look:`,
       unresolvedReasons.map((r) => `  • ${r}`).join("\n"),
       ``,
-      `Everything else is fine (${taggedNames.length}/${batch.tags.length} tagged). Draft is open in Loop Browser.`,
+      `Everything else is fine (${taggedNames.length}/${batch.tags.length} tagged). It was NOT posted — the script moved on to the rest of today's queue and this draft gets discarded when it does. Check runs/batch-spotlight-post.log and re-run this batch's pantry file manually.`,
     ].join("\n"));
     return { status: "needs-review", batchNum, names, taggedNames, unresolvedReasons };
   }
@@ -540,7 +540,7 @@ async function postBatch(page, batchFile, batchNum) {
   } catch { posted = false; }
   if (!posted) {
     console.log(`  ⚠ clicked Post but never saw "Post successful" — may have posted anyway, needs manual verification`);
-    queueNeedsReviewNotify(`⚠ LinkedIn spotlight — batch ${batchNum}: clicked Post but didn't see the success confirmation. Please check the Tablon Community page directly to see if it actually went live before re-running.`);
+    queueNeedsReviewNotify(`⚠ LinkedIn spotlight — batch ${batchNum}: clicked Post but didn't see the success confirmation. The script moved on to the rest of today's queue. Before re-running this batch, check the Tablon Community page directly to see if it actually went live — re-running an already-posted batch risks a duplicate.`);
     return { status: "needs-review", batchNum, names, taggedNames, unresolvedReasons: ["post-confirmation-timeout"] };
   }
   // Confirmed live (2026-09-17, batch 7): LinkedIn's "Post successful" toasts can
@@ -577,6 +577,7 @@ if (!files.length) { console.log(`no BATCH-*.txt files in ${PANTRY}`); process.e
 const browser = await connect({ autostart: false });
 const { page } = await activePage(browser);
 let postedCount = 0, needsReview = false;
+const needsReviewBatches = [];
 for (const f of files) {
   const batchNum = +(f.match(/^BATCH-(\d+)-/) || [0, 0])[1];
   const content = readFileSync(path.join(PANTRY, f), "utf8");
@@ -596,13 +597,21 @@ for (const f of files) {
       await sleep(pause);
       continue;
     }
-    if (r && r.status === "needs-review") { needsReview = true; break; }
+    if (r && r.status === "needs-review") {
+      // Don't let one ambiguous batch stall every batch queued after it. The
+      // draft stays up only until the NEXT batch starts — closeAnyStrayComposer()
+      // (below) discards it before opening a new one, so it's safe to keep going
+      // through the rest of today's ready batches. Nothing was posted for this one.
+      needsReview = true;
+      needsReviewBatches.push(batchNum);
+      continue;
+    }
   } catch (e) {
     console.log(`BATCH ${batchNum}: ERROR ${e.message} — trying next batch`);
     await closeAnyStrayComposer(page);
   }
 }
 console.log(`\nSCRIPT DONE — ${postedCount} batch(es) posted automatically this run.`);
-if (needsReview) console.log("One batch needs manual review — its draft is left open, and a WhatsApp notification is queued.");
+if (needsReview) console.log(`${needsReviewBatches.length} batch(es) needed manual review (${needsReviewBatches.join(", ")}) — none were posted, see the WhatsApp notification(s) / log above for each.`);
 else if (postedCount === 0) console.log("Nothing left to post (all batches already posted, or none could be prepared).");
 process.exit(0);
