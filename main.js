@@ -142,7 +142,9 @@ function allowTabOpen() {
 // message sound via the page's own audio, ignoring every notification setting) comes out
 // of the tab's audio, below any OS/notification toggle. setAudioMuted covers HTML + Web
 // Audio and persists across in-tab navigations/reloads.
-const MUTE_AUDIO = process.env.LOOP_MUTE_AUDIO === "1";
+// Persistent per-instance mute: a `.mute-audio` file in the profile (userData) dir does the same as the env var,
+// so an instance stays silent however it is launched (cron, instance.sh, Dock). Remove the file to unmute.
+const muteAudio = () => process.env.LOOP_MUTE_AUDIO === "1" || fs.existsSync(path.join(app.getPath("userData"), ".mute-audio"));
 
 function newTab(url) {
   const view = new WebContentsView({
@@ -159,7 +161,7 @@ function newTab(url) {
   tabs.push({ id, view });
   win.contentView.addChildView(view);
   const wc = view.webContents;
-  if (MUTE_AUDIO) wc.setAudioMuted(true);   // silence background instances (persists across reloads)
+  if (muteAudio()) wc.setAudioMuted(true);   // silence background instances (persists across reloads)
   url ? wc.loadURL(url) : wc.loadFile(HOME, { query: { theme } }); // new tab inherits theme
   // Keep the base background matched to what's loading: white for web pages,
   // theme color for our own home tab (so it doesn't bleed dark through sites).
