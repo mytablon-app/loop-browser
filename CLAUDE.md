@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 Guides Claude Code in this repo — **self-contained: everything you need to operate Loop is here + `site-memories/<domain>.md`** (per-restaurant cooking knowledge, loaded only when cooking that site). **Keep it tight — it loads every turn; do not grow it with narrative.** Each contributor's `~/.claude` auto-memory is private and per-user — **not** required to operate, and don't assume teammates share yours.
 
 # Loop Browser
@@ -27,7 +29,9 @@ npm test                            # whole suite only, offline, no browser need
 npm run check:bundle                # packaging-completeness guard
 node scripts/check-no-secrets.mjs   # secret scan (also the pre-commit hook)
 node cli.mjs <verb>                 # live smoke test; green npm test ≠ working cook
+npm start                           # launch the Electron app (CDP :9222); `loop` auto-launches it anyway
 ```
+No linter is configured. `tests/run.mjs` is a plain-node script (no runner, no single-test flag; exits 1 on any FAIL) and needs a Playwright chromium locally — to iterate on one behaviour, temporarily comment out other blocks or probe with a small `connect()` script.
 **Cook broke?** Read `runs/<recipe>-incident.json` → `PLAYBOOK.md` → `site-memories/<domain>.md`.
 
 ## Kitchen vocabulary (canonical)
