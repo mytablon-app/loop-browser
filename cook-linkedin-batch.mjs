@@ -90,7 +90,10 @@ function alreadyPosted(names) {
   if (!existsSync(LOG_FILE)) return false;
   const log = readFileSync(LOG_FILE, "utf8");
   const normNames = names.map((n) => n.toLowerCase().trim());
-  for (const m of log.matchAll(/Batch \d+ \((\d+) people:\s*([^)]+)\)/g)) {
+  // Names can contain parentheses ("(Waq Si)", "(Omar)"), so end the list at the
+  // ") — " that logBatch() writes before the URL, NOT at the first ")" (that
+  // truncation made such batches never dedup and re-post daily).
+  for (const m of log.matchAll(/Batch \d+ \((\d+) people:\s*(.+?)\) — /g)) {
     if (+m[1] !== names.length) continue;
     const listText = m[2].toLowerCase();
     if (normNames.every((n) => listText.includes(n))) return true;
