@@ -98,6 +98,7 @@ Step verbs: `open · fill · click · press · wait · wait-for` (poll text/sel 
 
 ## Hard rules
 - **Only the human logs in** — never type credentials. If logged out, stop & ask.
+- **No scheduled automation (owner decision, 2026-11-21, until further notice):** never create, load or re-enable a launchd/cron/timer job that opens a Loop Browser instance or runs a cook — cooks run only on the owner's in-the-moment ask. Any cron/launchd mention elsewhere in this file describes mechanism, not permission. To retire a job: `launchctl bootout` + `launchctl disable` + move the plist out of `~/Library/LaunchAgents` (plain `unload` reloads at next login).
 - **Stop & ask** on uncertainty or anything destructive/irreversible (delete, pay, mass-send).
 - **Auto-push (owner default):** after any edit, auto `add`+`commit`+`push` — never ask "should I push?". The pre-commit secret guard (git boundary) auto-runs and gates every commit, so the push is safe by construction. (This only removes the *push* prompt; the destructive/mass-send/outward-facing gate above is a separate cook-safety stop and still holds.)
 - **Human-like & watchable:** deliberate pacing; cook one step at a time, observing each — never blast batches or reopen the app in a loop.
