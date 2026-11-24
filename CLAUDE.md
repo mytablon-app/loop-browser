@@ -32,6 +32,7 @@ node cli.mjs <verb>                 # live smoke test; green npm test ≠ workin
 npm start                           # launch the Electron app (CDP :9222); `loop` auto-launches it anyway
 ```
 No linter is configured. `tests/run.mjs` is a plain-node script (no runner, no single-test flag; exits 1 on any FAIL) and launches a headless Playwright chromium (the `playwright` package isn't a dependency — it falls back to `playwright-core` + a browser in the ms-playwright cache; if missing: `npx playwright install chromium`) — to iterate on one behaviour, temporarily comment out other blocks or probe with a small `connect()` script.
+**Engine changes:** a new step verb needs its `runStep` case (`lib.mjs`) + a test + a line in `skill/loop/SKILL.md` and the verb list below; gate platform-specific code (`PLATFORMS.md` = the honest mac/win/linux matrix). A new shipped module must be added to BOTH `files` lists in `package.json` (the bundle guard fails otherwise).
 **Cook broke?** Read `runs/<recipe>-incident.json` → `PLAYBOOK.md` → `site-memories/<domain>.md`.
 
 ## Kitchen vocabulary (canonical)
@@ -45,7 +46,7 @@ No linter is configured. `tests/run.mjs` is a plain-node script (no runner, no s
 Per-restaurant knowledge (selectors, flow, quirks, account-health) lives in **`site-memories/<domain>.md`** — the **generic site MODEL ships** (no personal data); your specifics (companyId, paths, account state, real names) stay private in `site-memories/local/` / `recipes/local/`. **When cooking/authoring on a site, read its cuisine pack — that's your cuisine context, and nothing else cuisine-wise.** Keep the two memories apart: the owner/strategy context stays in the chat; a cook loads only its **cuisine pack + the dish**.
 **Delegation rail (default — don't cook inline in the owner chat):**
 - **Known recipe, no brain needed** → just `loop run`/`loop serve` (deterministic, zero LLM, zero memory).
-- **Brain needed** (author / heal / drive a not-yet-recipe'd flow) → delegate to the **`loop-cook` subagent** (`.claude/agents/loop-cook.md`): a fresh, narrow context with bounded tools that reads ONLY the site's cuisine pack + the dish — never the owner chat. It cooks, tidies, records, and returns a tight summary.
+- **Brain needed** (author / heal / drive a not-yet-recipe'd flow) → delegate to the **`loop-cook` subagent** (`.claude/agents/loop-cook.md`): a fresh, narrow context with bounded tools that reads ONLY the site's cuisine pack + the dish — never the owner chat. It cooks, tidies, records, and returns a tight summary. ⚠ `.claude/` is gitignored, so the agent file (and the Stop hook) exist only on machines that created them — if `.claude/agents/loop-cook.md` is absent, cook in-chat with the same blinders and `loop mop` by hand.
 
 Existing packs: `site-memories/linkedin.md`, `site-memories/whatsapp.md`. Bespoke drivers: `cook-linkedin.mjs`, `cook-connect.mjs`.
 **Building packs (standing practice):** build/extend a pack for **multi-dish or quirky/behind-login** restaurants; keep it to the **map + cross-dish knowledge + quirks + safety** — NOT copies of recipe steps. Seed the route from prior knowledge, **verify live, capture the exact selectors.** Skip one-off public sites (the recipe alone suffices) — don't make packs that are double work. **Auto-capture is BUILT:** on a successful self-heal the engine records `target → resolved` to `site-memories/local/captured/<domain>.json` (gitignored) and tries it first next run — stale targets heal once, then never again.
@@ -54,7 +55,7 @@ Existing packs: `site-memories/linkedin.md`, `site-memories/whatsapp.md`. Bespok
 - `main.js` — Electron main: frameless glass window (macOS vibrancy / Windows acrylic), maximised, exposes **CDP on `localhost:9222`**; **managed multi-tab** (tab strip in the toolbar, one `WebContentsView` per tab, rate-limited popup→newTab).
 - `cli.mjs` — the `loop` CLI: connects over CDP, runs single commands + recipes (Guardian-wrapped).
 - `lib.mjs` — engine core: `connect`/`activePage`, `findInput`/`findClickable` (poll + deterministic self-heal), `runStep` primitives, `harvestMembers`, `captureIncident`/`captureAuthoringContext`.
-- `wa.mjs` — WhatsApp primitives + verbs (reusable WA logic, shipped). `cook-linkedin.mjs` / `cook-linkedin-batch.mjs` / `cook-connect.mjs` — bespoke LinkedIn drivers (NOT shipped — repo-local).
+- `wa.mjs` — WhatsApp primitives + verbs (reusable WA logic, shipped). `cook-linkedin.mjs` / `cook-linkedin-batch.mjs` / `cook-connect.mjs` — bespoke LinkedIn drivers (tracked in git, but NOT in the npm/app bundle; env-driven: `LOOP_PANTRY`, `LOOP_LI_COMPANY_ID`).
 - `porter.mjs` (ingredient gathering) · `servicelog.mjs` (the Service Log) · `stats.mjs` (the graduation ledger — per-recipe clean-run counts; gitignored state in `dishes/`).
 - `ui/` — `home.html`, `toolbar.html`, `preload.js` (the glass UI).
 - `recipes/` — saved recipes (`*.json`). `recipes/local/` = private (gitignored).
@@ -68,6 +69,9 @@ The CLI speaks **CDP** to `localhost:9222` via Playwright `connectOverCDP`. Non-
 - **`activePage()` drives the tab you're LOOKING AT** — skips `about:*`/`/ui/toolbar.html`, then picks the tab main.js flags `window.__loopActiveTab` (and `bringToFront()`s it). For background/no-focus drives (crons), use **`pageFor(browser, pattern)`** + `bgClick`/`bgType` — leaves focus alone, works on a hidden tab.
 - **`app.userAgentFallback` forced to clean Chrome UA** — UA-sniffing sites (WhatsApp, etc.) reject the default Electron UA. Keep it Chrome-shaped.
 - **`findInput`/`findClickable` poll then self-heal** (`healFind`): exact role/label, then deterministic fuzzy word-overlap — the free "rung 1" before any LLM. On a heal they **auto-capture** `target→resolved` (gitignored per-domain JSON) and try that first next run — so the heal cost is paid once.
+- **`withRetry` never re-runs a step that already acted** — a step that landed (e.g. a click) throws with `err.noRetry = true`; keep that on any new non-idempotent verb (double-send guard).
+- **WhatsApp instance lock:** `runs/wa-<port>.lock` (`wa.mjs` `withLock`) — holder name + timestamp, left as `free` (not deleted) on release; anything sharing a WA instance takes turns through it.
+- **Tuning env:** `LOOP_HIGHLIGHT_MS` (per-action highlight pause, default 120; 0 = no pause) · `LOOP_MUTE_AUDIO=1` or a `.mute-audio` file in the profile dir (mute all tabs) · `LOOP_DISHES_DIR` (relocate ledgers; tests use it).
 - **Native OS dialogs are INVISIBLE to CDP — the #1 "stuck and can't see why" trap.** `loop shot`/`snapshot` see only the web page; a file picker / OS confirm sits *outside* it. **Diagnosis ladder:** (1) DOM — `read`/`snapshot`; (2) `loop shot` (web pixels); (3) **`loop shot-os`** (OS screenshot, LB frontmost — catches native dialogs). **Close** a native modal with **`loop os-dismiss`**. **Avoid** opening one on upload → intercept the chooser: `Promise.all([page.waitForEvent("filechooser"), <trigger>])` → `fc.setFiles(path)` (never `mouse.click` an upload button).
 - **Two verification layers:** `npm test` (`tests/run.mjs`) is the fast offline CI harness (no running Loop Browser or login needed; `LOOP_DISHES_DIR` sandboxes the ledger). But the real proof is **run a recipe live and watch** — `node cli.mjs <verb>` is the smoke test; a green `npm test` never substitutes for a live cook.
 
@@ -81,6 +85,7 @@ The CLI speaks **CDP** to `localhost:9222` via Playwright `connectOverCDP`. Non-
   "ingredients": { "group":"<placeholder>", "outDir":"./dishes" },
   "steps": [ { "do":"open","url":"…" }, { "do":"fill","target":"<label>","value":"{group}" } ] }
 ```
+New shipped recipes: name the file `<site>.<name>.json` and add `"site"` + `"verifiedOn"` (date last cooked clean live); don't rename the older un-prefixed ones (ledgers key on the name). Bump `version` on any step change — graduation is version-scoped. (Full norms: `CONTRIBUTING.md`.)
 Step verbs: `open · fill · click · press · wait · wait-for` (poll text/sel — the positive-signal verify) `· assert · read · snapshot · extract · upload` (chooser-intercept — never click a native picker open) `· click-xy · scrape-members · open-chat`. Finders + heal search the main frame THEN content iframes, and heal pierces open shadow DOM.
 **Target by role/label/text, never coordinates** (`click-xy` = vision fallback only). Use `{placeholders}` for ingredients. `recipes/local/` = private overlay (real URLs/paths), shadows shipped templates; a `ticket` block + `loop serve` cooks from a pantry of tickets.
 
